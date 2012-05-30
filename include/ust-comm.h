@@ -29,6 +29,7 @@
 #include <limits.h>
 #include <unistd.h>
 #include <lttng/ust-abi.h>
+#include "localstatedir.h"
 
 /*
  * Default timeout the application waits for the sessiond to send its
@@ -38,7 +39,7 @@
  */
 #define LTTNG_UST_DEFAULT_CONSTRUCTOR_TIMEOUT_MS	3000
 
-#define LTTNG_RUNDIR                        "/var/run/lttng"
+#define LTTNG_RUNDIR                        LOCALSTATEDIR
 #define LTTNG_HOME_RUNDIR                   "%s/.lttng"
 
 /* Default unix socket path */

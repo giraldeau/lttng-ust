@@ -20,6 +20,7 @@ autom4te.cache/
 /include/lttng/stamp-h2
 /include/lttng/ust-version.h
 /include/lttng/ust-config.h
+/include/localstatedir.h
 /config.h.in
 config/
 config.log

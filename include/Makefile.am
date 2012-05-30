@@ -29,3 +29,16 @@ noinst_HEADERS = \
 	lttng/bitfield.h \
 	helper.h \
 	share.h
+
+BUILT_SOURCES = localstatedir.h
+
+DISTCLEANFILES = localstatedir.h
+
+defaults.h: localstatedir.h
+
+FORCE-localstatedir.h: Makefile
+	echo '#define LOCALSTATEDIR "$(localstatedir)/run/lttng"' > localstatedir.h1
+	$(top_srcdir)/config/move-if-change localstatedir.h1 localstatedir.h
+
+localstatedir.h: FORCE-localstatedir.h
+

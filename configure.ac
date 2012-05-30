@@ -324,6 +324,8 @@ AS_ECHO("$version_description")
 AS_ECHO()
 AS_ECHO("LTTng-UST will be built with the following options:")
 AS_ECHO("Library format: $LIBFORMAT")
+AS_ECHO_N("Control sockets will be in:     ")
+AS_ECHO("`eval eval echo $localstatedir/run/lttng`")
 
 AS_ECHO()
 AS_ECHO_N("Java support (JNI): ")
