@@ -61,3 +61,7 @@
 #undef ctf_string
 #define ctf_string(_item, _src)					\
 	_ctf_string(_item, _src, 0)
+
+#undef ctf_enum
+#define ctf_enum(_provider, _name, _item, _src)			\
+	_ctf_enum(_provider, _name, _item, _src, 0)

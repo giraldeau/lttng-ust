@@ -422,6 +422,50 @@ __tracepoints__ptrs_destroy(void)
 
 /* The following declarations must be outside re-inclusion protection. */
 
+#ifndef TRACEPOINT_ENUM
+
+/*
+ * Tracepoint Enumerations
+ *
+ * The enumeration is a mapping between an integer, or range of integers, and
+ * a string. It can be used to have a more compact trace in cases where the
+ * possible values for a field are limited:
+ *
+ * An example:
+ *
+ * TRACEPOINT_ENUM(someproject_component, enumname, int
+ *	TP_ENUM_VALUES(
+ *		ctf_enum_value("even", 0)
+ *		ctf_enum_value("uneven", 1)
+ *		ctf_enum_range("twoto4", 2, 4)
+ *		ctf_enum_value("five", 5)
+ *	)
+ * )
+ *
+ * Where "someproject_component" is the name of the component this enumeration
+ * belongs to and "enumname" identifies this enumeration. The "int" is the data
+ * type of the container and can be anything that can be translated to a ctf
+ * integer (int, short, char, etc). Inside the TP_ENUM_VALUES macro is the
+ * actual mapping. Each string value can map to either a single value with
+ * ctf_enum_value or a range of values with ctf_enum_range.
+ *
+ * Enumeration ranges may overlap, but the behavior is implementation-defined,
+ * each trace reader will handle overlapping as it wishes.
+ *
+ * That enumeration can then be used in a field inside the TP_FIELD macro using
+ * the following line:
+ *
+ * ctf_enum(someproject_component, enumname, enumfield, enumval)
+ *
+ * Where "someproject_component" and "enumname" match those in the
+ * TRACEPOINT_ENUM, "enumfield" is the name of the field and "enumval" is the
+ * value.
+ */
+
+#define TRACEPOINT_ENUM(provider, name, type, values)
+
+#endif /* #ifndef TRACEPOINT_ENUM */
+
 #ifndef TRACEPOINT_EVENT
 
 /*
