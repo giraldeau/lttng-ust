@@ -422,7 +422,9 @@ int lttng_event_create(const struct lttng_event_desc *desc,
 		desc->nr_fields,
 		desc->fields,
 		uri,
-		&event->id);
+		&event->id,
+		desc->u.ext.nr_global_type_decl,
+		desc->u.ext.global_type_decl);
 	if (ret < 0) {
 		DBG("Error (%d) registering event to sessiond", ret);
 		goto sessiond_register_error;

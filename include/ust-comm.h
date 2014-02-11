@@ -49,6 +49,7 @@
 #define LTTNG_UST_COMM_REG_MSG_PADDING			64
 
 struct lttng_event_field;
+struct lttng_global_type_decl;
 struct lttng_ctx_field;
 
 struct ustctl_reg_msg {
@@ -127,7 +128,7 @@ struct ustcomm_notify_hdr {
 	uint32_t notify_cmd;
 } LTTNG_PACKED;
 
-#define USTCOMM_NOTIFY_EVENT_MSG_PADDING	32
+#define USTCOMM_NOTIFY_EVENT_MSG_PADDING	28
 struct ustcomm_notify_event_msg {
 	uint32_t session_objd;
 	uint32_t channel_objd;
@@ -136,6 +137,7 @@ struct ustcomm_notify_event_msg {
 	uint32_t signature_len;
 	uint32_t fields_len;
 	uint32_t model_emf_uri_len;
+	uint32_t global_type_decl_len;
 	char padding[USTCOMM_NOTIFY_EVENT_MSG_PADDING];
 	/* followed by signature, fields, and model_emf_uri */
 } LTTNG_PACKED;
@@ -221,7 +223,9 @@ int ustcomm_register_event(int sock,
 	size_t nr_fields,		/* fields */
 	const struct lttng_event_field *fields,
 	const char *model_emf_uri,
-	uint32_t *id);			/* event id (output) */
+	uint32_t *id,			/* event id (output) */
+	size_t nr_global_type_decl,
+	const struct lttng_global_type_decl *lttng_global_types); /* global type declarations */
 
 /*
  * Returns 0 on success, negative error value on error.

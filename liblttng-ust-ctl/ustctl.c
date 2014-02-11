@@ -1758,13 +1758,17 @@ int ustctl_recv_register_event(int sock,
 	char **signature,
 	size_t *nr_fields,
 	struct ustctl_field **fields,
-	char **model_emf_uri)
+	char **model_emf_uri,
+	size_t *nr_global_type_decl,
+	struct ustctl_global_type_decl **global_type_decl)
 {
 	ssize_t len;
 	struct ustcomm_notify_event_msg msg;
-	size_t signature_len, fields_len, model_emf_uri_len;
+	size_t signature_len, fields_len, model_emf_uri_len, global_type_decl_len;
 	char *a_sign = NULL, *a_model_emf_uri = NULL;
 	struct ustctl_field *a_fields = NULL;
+	struct ustctl_global_type_decl *a_global_type = NULL;
+	int i;
 
 	len = ustcomm_recv_unix_sock(sock, &msg, sizeof(msg));
 	if (len > 0 && len != sizeof(msg))
@@ -1787,6 +1791,12 @@ int ustctl_recv_register_event(int sock,
 	}
 
 	model_emf_uri_len = msg.model_emf_uri_len;
+
+	global_type_decl_len = msg.global_type_decl_len;
+
+	if (global_type_decl_len % sizeof(*a_global_type) != 0) {
+		return -EINVAL;
+	}
 
 	/* recv signature. contains at least \0. */
 	a_sign = zmalloc(signature_len);
@@ -1852,13 +1862,73 @@ int ustctl_recv_register_event(int sock,
 		a_model_emf_uri[model_emf_uri_len - 1] = '\0';
 	}
 
+	/* recv global types */
+	if (global_type_decl_len) {
+		a_global_type = zmalloc(global_type_decl_len);
+		if (!a_global_type) {
+			len = -ENOMEM;
+			goto signature_error;
+		}
+		len = ustcomm_recv_unix_sock(sock, a_global_type, global_type_decl_len);
+		DBG("Received global types for event %s.\n", event_name);
+		if (len > 0 && len != global_type_decl_len) {
+			len = -EIO;
+			goto global_type_error;
+		}
+		if (len == 0) {
+			len = -EPIPE;
+			goto global_type_error;
+		}
+		if (len < 0) {
+			goto global_type_error;
+		}
+		/* Receive extra information per global type category */
+		for (i = 0; i < global_type_decl_len / sizeof(*a_global_type); i++) {
+			struct ustctl_global_type_decl *one_global_type;
+			one_global_type = &a_global_type[i];
+
+			switch (one_global_type->mtype) {
+			case ustctl_mtype_enum:
+			{
+				int entry_len = one_global_type->u.ctf_enum.len * sizeof(*one_global_type->u.ctf_enum.entries);
+				/* Send the entries */
+				one_global_type->u.ctf_enum.entries = zmalloc(entry_len);
+				if (!one_global_type->u.ctf_enum.entries) {
+					len = -ENOMEM;
+					goto global_type_error;
+				}
+				len = ustcomm_recv_unix_sock(sock, one_global_type->u.ctf_enum.entries, entry_len);
+				DBG("Received entries for enum %s.\n", one_global_type->u.ctf_enum.name);
+				if (len > 0 && len != entry_len) {
+					len = -EIO;
+					goto global_type_error;
+				}
+				if (len == 0) {
+					len = -EPIPE;
+					goto global_type_error;
+				}
+				if (len < 0) {
+					goto global_type_error;
+				}
+				break;
+			}
+			default:
+				break;
+			}
+		}
+	}
+
 	*signature = a_sign;
 	*nr_fields = fields_len / sizeof(*a_fields);
 	*fields = a_fields;
 	*model_emf_uri = a_model_emf_uri;
+	*nr_global_type_decl = global_type_decl_len / sizeof(*a_global_type);
+	*global_type_decl = a_global_type;
 
 	return 0;
 
+global_type_error:
+	free(a_global_type);
 model_error:
 	free(a_model_emf_uri);
 fields_error:
