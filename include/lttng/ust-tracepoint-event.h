@@ -118,6 +118,39 @@ static const char							\
 #include TRACEPOINT_INCLUDE
 
 /*
+ * Stage 0.9 of tracepoint event generation
+ *
+ * Unfolding the enums
+ */
+#include <lttng/ust-tracepoint-event-reset.h>
+
+/* Enumeration entry (single value) */
+#undef ctf_enum_value
+#define ctf_enum_value(_string, _value)		\
+	{ _value, _value, #_string },
+
+/* Enumeration entry (range) */
+#undef ctf_enum_range
+#define ctf_enum_range(_string, _range_start, _range_end)		\
+	{ _range_start, _range_end, #_string },
+
+#undef TP_ENUM_VALUES
+#define TP_ENUM_VALUES(...)						\
+	__VA_ARGS__
+
+#undef TRACE_EVENT_ENUM
+#define TRACE_EVENT_ENUM(_name, _values)
+
+
+#undef TRACEPOINT_ENUM
+#define TRACEPOINT_ENUM(_provider, _name, _type, _values)		\
+	const struct lttng_enum_entry __enum_values__##_provider##_##_name[] = { \
+		_values					\
+	};
+
+#include TRACEPOINT_INCLUDE
+
+/*
  * Stage 1 of tracepoint event generation.
  *
  * Create event field type metadata section.
@@ -199,6 +232,24 @@ static const char							\
 	  .nowrite = _nowrite,					\
 	},
 
+#undef _ctf_enum
+#define _ctf_enum(_provider, _name, _item, _src, _nowrite)	  \
+	{							  \
+	  .name = #_item,					  \
+	  .type = {						  \
+	      .atype = atype_enum,			          \
+	      .u = {						  \
+		  .basic = {					  \
+		       .enumeration = {				  \
+			     .name = #_provider "_" #_name	  \
+			   },					  \
+		     },						  \
+		},						  \
+	    },							  \
+	  .nowrite = _nowrite,					  \
+	},
+
+
 #undef TP_FIELDS
 #define TP_FIELDS(...) __VA_ARGS__	/* Only one used in this phase */
 
@@ -206,6 +257,55 @@ static const char							\
 #define TRACEPOINT_EVENT_CLASS(_provider, _name, _args, _fields)		   	     \
 	static const struct lttng_event_field __event_fields___##_provider##___##_name[] = { \
 		_fields									     \
+	};
+
+#undef TRACEPOINT_ENUM
+#define TRACEPOINT_ENUM(_provider, _name, _type, _values)		\
+	static const struct lttng_enum __enum_##_provider##_##_name = {	\
+		.name = #_provider "_" #_name,				\
+		.container_type = {					\
+			  .size = sizeof(_type) * CHAR_BIT,		\
+			  .alignment = lttng_alignof(_type) * CHAR_BIT,	\
+			  .signedness = lttng_is_signed_type(_type),	\
+			  .reverse_byte_order = 0,			\
+			  .base = 10,					\
+			  .encoding = lttng_encode_none,		\
+			},						\
+		.entries = __enum_values__##_provider##_##_name,	\
+		.len = _TP_ARRAY_SIZE(__enum_values__##_provider##_##_name), \
+	};
+
+#include TRACEPOINT_INCLUDE
+
+/*
+ * Stage 1.1 of tracepoint event generation.
+ *
+ * Create the global type declarations structures for each field
+ */
+
+/* Reset all macros within TRACEPOINT_EVENT */
+#include <lttng/ust-tracepoint-event-reset.h>
+#include <lttng/ust-tracepoint-event-write.h>
+#include <lttng/ust-tracepoint-event-nowrite.h>
+
+#undef _ctf_enum
+#define _ctf_enum(_provider, _name, _item, _src, _nowrite)	\
+	{							\
+	  .mtype = mtype_enum,					\
+	  .nowrite = _nowrite,					\
+	  .u = {						\
+	      .ctf_enum = &__enum_##_provider##_##_name,	\
+	    },							\
+	},
+
+
+#undef TP_FIELDS
+#define TP_FIELDS(...) __VA_ARGS__	/* Only one used in this phase */
+
+#undef TRACEPOINT_EVENT_CLASS
+#define TRACEPOINT_EVENT_CLASS(_provider, _name, _args, _fields) \
+	static const struct lttng_global_type_decl __global_types_for___##_provider##___##_name[] = { \
+		_fields						 \
 	};
 
 #include TRACEPOINT_INCLUDE
@@ -267,6 +367,10 @@ static void __event_probe__##_provider##___##_name(_TP_ARGS_DATA_PROTO(_args));
 #define _ctf_string(_item, _src, _nowrite)				       \
 	__event_len += __dynamic_len[__dynamic_len_idx++] = strlen(_src) + 1;
 
+#undef _ctf_enum
+#define _ctf_enum(_provider, _name, _item, _src, _nowrite)		\
+	__event_len += __enum_get_size__##_provider##___##_name(__event_len);
+
 #undef TP_ARGS
 #define TP_ARGS(...) __VA_ARGS__
 
@@ -288,6 +392,18 @@ size_t __event_get_size__##_provider##___##_name(size_t *__dynamic_len, _TP_ARGS
 	_fields								      \
 	return __event_len;						      \
 }
+
+#undef TRACEPOINT_ENUM
+#define TRACEPOINT_ENUM(_provider, _name, _type, _values)		      \
+static inline								      \
+size_t __enum_get_size__##_provider##___##_name(size_t __event_len)	      \
+{									      \
+	size_t __enum_len = 0;						      \
+	__enum_len = lib_ring_buffer_align(__event_len, lttng_alignof(_type)); \
+	__enum_len += sizeof(_type);					      \
+	return __enum_len;						      \
+}
+
 
 #include TRACEPOINT_INCLUDE
 
@@ -459,6 +575,10 @@ void __event_prepare_filter_stack__##_provider##___##_name(char *__stack_data,\
 #undef _ctf_string
 #define _ctf_string(_item, _src, _nowrite)
 
+#undef _ctf_enum
+#define _ctf_enum(_provider, _name, _item, _src, _nowrite)		\
+	__event_align = _tp_max_t(size_t, __event_align, __enum_get_align__##_provider##___##_name());
+
 #undef TP_ARGS
 #define TP_ARGS(...) __VA_ARGS__
 
@@ -475,6 +595,14 @@ size_t __event_get_align__##_provider##___##_name(_TP_ARGS_PROTO(_args))      \
 	size_t __event_align = 1;					      \
 	_fields								      \
 	return __event_align;						      \
+}
+
+#undef TRACEPOINT_ENUM
+#define TRACEPOINT_ENUM(_provider, _name, _type, _values)		      \
+static inline								      \
+size_t __enum_get_align__##_provider##___##_name(void)			      \
+{									      \
+	return lttng_alignof(_type);					      \
 }
 
 #include TRACEPOINT_INCLUDE
@@ -542,6 +670,14 @@ size_t __event_get_align__##_provider##___##_name(_TP_ARGS_PROTO(_args))      \
 	else								\
 		__chan->ops->event_write(&__ctx, _src,			\
 			__get_dynamic_len(dest));
+
+#undef _ctf_enum
+#define _ctf_enum(_provider, _name, _item, _src, _nowrite)		 \
+	{								 \
+		int __tmp = (_src);					 \
+		lib_ring_buffer_align_ctx(&__ctx, lttng_alignof(__tmp)); \
+		__chan->ops->event_write(&__ctx, &__tmp, sizeof(__tmp)); \
+	}
 
 /* Beware: this get len actually consumes the len value */
 #undef __get_dynamic_len
@@ -718,10 +854,11 @@ const struct lttng_event_desc __event_desc___##_provider##_##_name = {	       \
 	.nr_fields = _TP_ARRAY_SIZE(__event_fields___##_provider##___##_template), \
 	.loglevel = &__ref_loglevel___##_provider##___##_name,		       \
 	.signature = __tp_event_signature___##_provider##___##_template,       \
-	.u = { .ext =							       \
-		{							       \
+	.u = {								       \
+	    .ext = {							       \
 		  .model_emf_uri = &__ref_model_emf_uri___##_provider##___##_name, \
-		  .nr_global_type_decl = 0,				       \
+		  .nr_global_type_decl = _TP_ARRAY_SIZE(__global_types_for___##_provider##___##_name), \
+		  .global_type_decl = __global_types_for___##_provider##___##_name, \
 		},							       \
 	},								       \
 };
