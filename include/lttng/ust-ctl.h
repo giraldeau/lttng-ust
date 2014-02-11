@@ -298,6 +298,13 @@ struct ustctl_float_type {
 	char padding[USTCTL_UST_FLOAT_TYPE_PADDING];
 } LTTNG_PACKED;
 
+#define USTCTL_UST_ENUM_ENTRY_PADDING	32
+struct ustctl_enum_entry {
+	uint64_t start, end;		/* start and end are inclusive */
+	char string[LTTNG_UST_SYM_NAME_LEN];
+	char padding[USTCTL_UST_ENUM_ENTRY_PADDING];
+};
+
 #define USTCTL_UST_BASIC_TYPE_PADDING	296
 union _ustctl_basic_type {
 	struct ustctl_integer_type integer;
@@ -305,6 +312,9 @@ union _ustctl_basic_type {
 		enum ustctl_string_encodings encoding;
 	} string;
 	struct ustctl_float_type _float;
+	struct {
+		char name[LTTNG_UST_SYM_NAME_LEN];
+	} enumeration;
 	char padding[USTCTL_UST_BASIC_TYPE_PADDING];
 } LTTNG_PACKED;
 
@@ -315,7 +325,7 @@ struct ustctl_basic_type {
 	} u;
 } LTTNG_PACKED;
 
-#define USTCTL_UST_TYPE_PADDING	128
+#define USTCTL_UST_TYPE_PADDING		128
 struct ustctl_type {
 	enum ustctl_abstract_types atype;
 	union {
@@ -329,6 +339,30 @@ struct ustctl_type {
 			struct ustctl_basic_type elem_type;
 		} sequence;
 		char padding[USTCTL_UST_TYPE_PADDING];
+	} u;
+} LTTNG_PACKED;
+
+#define USTCTL_UST_ENUM_TYPE_PADDING	32
+struct ustctl_enum {
+	char name[LTTNG_UST_SYM_NAME_LEN];
+	struct ustctl_integer_type container_type;
+	struct ustctl_enum_entry *entries;
+	unsigned int len;
+	char padding[USTCTL_UST_ENUM_TYPE_PADDING];
+} LTTNG_PACKED;
+
+/* CTF categories for global types declared outside event descriptions */
+enum ustctl_global_type_categories {
+	ustctl_mtype_enum,
+	NR_USTCTL_GLOBAL_TYPES,
+};
+
+#define USTCTL_UST_GLOBAL_TYPE_DECL_PADDING	640
+struct ustctl_global_type_decl {
+	uint32_t mtype;
+	union {
+		struct ustctl_enum ctf_enum;
+		char padding[USTCTL_UST_GLOBAL_TYPE_DECL_PADDING];
 	} u;
 } LTTNG_PACKED;
 

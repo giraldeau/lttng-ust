@@ -97,6 +97,12 @@ enum lttng_string_encodings {
 	NR_STRING_ENCODINGS,
 };
 
+/* CTF categories for global types declared outside event descriptions */
+enum lttng_global_type_categories {
+	mtype_enum,
+	NR_GLOBAL_TYPES,
+};
+
 #define LTTNG_UST_ENUM_ENTRY_PADDING	16
 struct lttng_enum_entry {
 	unsigned long long start, end;	/* start and end are inclusive */
@@ -212,10 +218,20 @@ struct lttng_type {
 #define LTTNG_UST_ENUM_TYPE_PADDING	24
 struct lttng_enum {
 	const char *name;
-	struct lttng_type container_type;
+	struct lttng_integer_type container_type;
 	const struct lttng_enum_entry *entries;
 	unsigned int len;
 	char padding[LTTNG_UST_ENUM_TYPE_PADDING];
+};
+
+#define LTTNG_UST_GLOBAL_TYPES_PADDING	60
+struct lttng_global_type_decl {
+	enum lttng_global_type_categories mtype;
+	unsigned int nowrite; /* inherited from the field using it */
+	union {
+		const struct lttng_enum *ctf_enum;
+		char padding[LTTNG_UST_GLOBAL_TYPES_PADDING];
+	} u;
 };
 
 /*
@@ -279,6 +295,8 @@ struct lttng_event_desc {
 	union {
 		struct {
 			const char **model_emf_uri;
+			unsigned int nr_global_type_decl;
+			const struct lttng_global_type_decl *global_type_decl;
 		} ext;
 		char padding[LTTNG_UST_EVENT_DESC_PADDING];
 	} u;
