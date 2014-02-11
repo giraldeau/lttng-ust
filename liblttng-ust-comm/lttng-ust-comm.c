@@ -733,6 +733,13 @@ int serialize_basic_type(enum ustctl_abstract_types *uatype,
 		break;
 	}
 	case atype_enum:
+	{
+		strncpy(ubt->enumeration.name, lbt->enumeration.name,
+				LTTNG_UST_SYM_NAME_LEN);
+		ubt->enumeration.name[LTTNG_UST_SYM_NAME_LEN - 1] = '\0';
+		*uatype = ustctl_atype_enum;
+		break;
+	}
 	case atype_array:
 	case atype_sequence:
 	default:
@@ -750,6 +757,7 @@ int serialize_one_type(struct ustctl_type *ut, const struct lttng_type *lt)
 	case atype_integer:
 	case atype_float:
 	case atype_string:
+	case atype_enum:
 		ret = serialize_basic_type(&ut->atype, lt->atype,
 			&ut->u.basic, &lt->u.basic);
 		if (ret)
@@ -792,7 +800,6 @@ int serialize_one_type(struct ustctl_type *ut, const struct lttng_type *lt)
 		ut->atype = ustctl_atype_sequence;
 		break;
 	}
-	case atype_enum:
 	default:
 		return -EINVAL;
 	}
@@ -838,6 +845,121 @@ int serialize_fields(size_t *_nr_write_fields,
 error_type:
 	free(fields);
 	return ret;
+}
+
+static
+int serialize_enum(struct ustctl_enum *uenum,
+		const struct lttng_enum *lenum)
+{
+	int i;
+	struct ustctl_integer_type *uit;
+	const struct lttng_integer_type *lit;
+	struct ustctl_enum_entry *entries;
+
+	strncpy(uenum->name, lenum->name, LTTNG_UST_SYM_NAME_LEN);
+	uenum->name[LTTNG_UST_SYM_NAME_LEN - 1] = '\0';
+
+	/* Serialize the container_type */
+	uit = &uenum->container_type;
+	lit = &lenum->container_type;
+	uit->size = lit->size;
+	uit->signedness = lit->signedness;
+	uit->reverse_byte_order = lit->reverse_byte_order;
+	uit->base = lit->base;
+	if (serialize_string_encoding(&uit->encoding, lit->encoding))
+		return -EINVAL;
+	uit->alignment = lit->alignment;
+
+	/* Serialize the entries */
+	entries = zmalloc(lenum->len * sizeof(*entries));
+	if (!entries)
+		return -ENOMEM;
+	for (i = 0; i < lenum->len; i++) {
+		struct ustctl_enum_entry *uentry;
+		const struct lttng_enum_entry *lentry;
+
+		uentry = &entries[i];
+		lentry = &lenum->entries[i];
+
+		uentry->start = lentry->start;
+		uentry->end = lentry->end;
+		strncpy(uentry->string, lentry->string, LTTNG_UST_SYM_NAME_LEN);
+		uentry->string[LTTNG_UST_SYM_NAME_LEN - 1] = '\0';
+	}
+	uenum->entries = entries;
+	uenum->len = lenum->len;
+	return 0;
+}
+
+static
+int serialize_global_type_decl(size_t *_nr_write_global_type_decl,
+		struct ustctl_global_type_decl **ustctl_global_type,
+		size_t nr_global_type_decl,
+		const struct lttng_global_type_decl *lttng_global_type)
+{
+	struct ustctl_global_type_decl *global_type_decl;
+	int i, ret;
+	size_t nr_write_global_type_decl = 0;
+
+	global_type_decl = zmalloc(nr_global_type_decl * sizeof(*global_type_decl));
+	if (!global_type_decl)
+		return -ENOMEM;
+
+	for (i = 0; i < nr_global_type_decl; i++) {
+		struct ustctl_global_type_decl *f;
+		const struct lttng_global_type_decl *lf;
+
+		f = &global_type_decl[nr_write_global_type_decl];
+		lf = &lttng_global_type[i];
+
+		/* skip 'nowrite' fields */
+		if (lf->nowrite)
+			continue;
+
+		/* do the serialize here */
+		switch (lf->mtype) {
+		case mtype_enum:
+		{
+			struct ustctl_enum *ue;
+			const struct lttng_enum *le;
+
+			ue = &f->u.ctf_enum;
+			le = lf->u.ctf_enum;
+			ret = serialize_enum(ue, le);
+			if (ret)
+				goto error;
+
+			f->mtype = ustctl_mtype_enum;
+			break;
+		}
+		default:
+			ret = -EINVAL;
+			goto error;
+		}
+
+		nr_write_global_type_decl++;
+	}
+
+	*_nr_write_global_type_decl = nr_write_global_type_decl;
+	*ustctl_global_type = global_type_decl;
+	return 0;
+
+error:
+	/* Free what has been allocated during global type serialization */
+	for (i = 0; i < nr_write_global_type_decl; i++) {
+		struct ustctl_global_type_decl *m;
+		m = &global_type_decl[i];
+		switch (m->mtype) {
+		case ustctl_mtype_enum:
+			free(m->u.ctf_enum.entries);
+			break;
+		default:
+			break;
+		}
+	}
+	free(global_type_decl);
+	return ret;
+
 }
 
 static

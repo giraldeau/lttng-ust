@@ -718,7 +718,12 @@ const struct lttng_event_desc __event_desc___##_provider##_##_name = {	       \
 	.nr_fields = _TP_ARRAY_SIZE(__event_fields___##_provider##___##_template), \
 	.loglevel = &__ref_loglevel___##_provider##___##_name,		       \
 	.signature = __tp_event_signature___##_provider##___##_template,       \
-	.u = { .ext = { .model_emf_uri = &__ref_model_emf_uri___##_provider##___##_name } }, \
+	.u = { .ext =							       \
+		{							       \
+		  .model_emf_uri = &__ref_model_emf_uri___##_provider##___##_name, \
+		  .nr_global_type_decl = 0,				       \
+		},							       \
+	},								       \
 };
 
 #include TRACEPOINT_INCLUDE
