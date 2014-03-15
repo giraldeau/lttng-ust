@@ -433,7 +433,8 @@ __tracepoints__ptrs_destroy(void)
  *
  * An example:
  *
- * TRACEPOINT_ENUM(someproject_component, enumname, int
+ * TRACEPOINT_ENUM(someproject_component, enumname,
+ *	ctf_enum_integer(int),
  *	TP_ENUM_VALUES(
  *		ctf_enum_value("even", 0)
  *		ctf_enum_value("uneven", 1)
