@@ -248,6 +248,17 @@ static const char							\
 		.nowrite = _nowrite,				\
 	},
 
+#undef ctf_enum_integer
+#define ctf_enum_integer(_type)					\
+	{							\
+		  .size = sizeof(_type) * CHAR_BIT,		\
+		  .alignment = lttng_alignof(_type) * CHAR_BIT,	\
+		  .signedness = lttng_is_signed_type(_type),	\
+		  .reverse_byte_order = 0,			\
+		  .base = 10,					\
+		  .encoding = lttng_encode_none,		\
+	}
+
 #undef TP_FIELDS
 #define TP_FIELDS(...) __VA_ARGS__	/* Only one used in this phase */
 
@@ -261,14 +272,7 @@ static const char							\
 #define TRACEPOINT_ENUM(_provider, _name, _type, _values)		\
 	static const struct lttng_enum __enum_##_provider##_##_name = {	\
 		.name = #_provider "_" #_name,				\
-		.container_type = {					\
-			  .size = sizeof(_type) * CHAR_BIT,		\
-			  .alignment = lttng_alignof(_type) * CHAR_BIT,	\
-			  .signedness = lttng_is_signed_type(_type),	\
-			  .reverse_byte_order = 0,			\
-			  .base = 10,					\
-			  .encoding = lttng_encode_none,		\
-		},							\
+		.container_type = _type,				\
 		.entries = __enum_values__##_provider##_##_name,	\
 		.len = _TP_ARRAY_SIZE(__enum_values__##_provider##_##_name), \
 	};
@@ -367,6 +371,10 @@ static void __event_probe__##_provider##___##_name(_TP_ARGS_DATA_PROTO(_args));
 #undef _ctf_enum
 #define _ctf_enum(_provider, _name, _item, _src, _nowrite)		       \
 	__event_len += __enum_get_size__##_provider##___##_name(__event_len);
+
+#undef ctf_enum_integer
+#define ctf_enum_integer(_type)						       \
+	_type
 
 #undef TP_ARGS
 #define TP_ARGS(...) __VA_ARGS__

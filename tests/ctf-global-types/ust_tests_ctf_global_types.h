@@ -28,12 +28,13 @@
 
 #include <lttng/tracepoint.h>
 
-TRACEPOINT_ENUM(ust_tests_ctf_global_types, testenum, int,
+TRACEPOINT_ENUM(ust_tests_ctf_global_types, testenum,
+	ctf_enum_integer(int),
 	TP_ENUM_VALUES(
 		ctf_enum_value("even", 0)
 		ctf_enum_value("uneven", 1)
 		ctf_enum_range("twoto4", 2, 4)
-		ctf_enum_value("five", 5)
+		ctf_enum_value("five\"extra\\test", 5)
 	)
 )
 

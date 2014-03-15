@@ -67,6 +67,9 @@
 #undef _ctf_enum
 #define _ctf_enum(_provider, _name, _item, _src, _nowrite)
 
+#undef ctf_enum_integer
+#define ctf_enum_integer(_type)
+
 /* "write" */
 #undef ctf_integer
 #define ctf_integer(_type, _item, _src)
