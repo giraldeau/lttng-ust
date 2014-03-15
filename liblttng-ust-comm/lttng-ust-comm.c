@@ -901,7 +901,8 @@ int serialize_global_type_decl(size_t *_nr_write_global_type_decl,
 	int i, ret;
 	size_t nr_write_global_type_decl = 0;
 
-	global_type_decl = zmalloc(nr_global_type_decl * sizeof(*global_type_decl));
+	global_type_decl = zmalloc(nr_global_type_decl
+					* sizeof(*global_type_decl));
 	if (!global_type_decl)
 		return -ENOMEM;
 
@@ -959,7 +960,6 @@ error:
 	}
 	free(global_type_decl);
 	return ret;
-
 }
 
 static

@@ -126,13 +126,13 @@ static const char							\
 
 /* Enumeration entry (single value) */
 #undef ctf_enum_value
-#define ctf_enum_value(_string, _value)		\
-	{ _value, _value, #_string },
+#define ctf_enum_value(_string, _value)					\
+	{ _value, _value, _string },
 
 /* Enumeration entry (range) */
 #undef ctf_enum_range
 #define ctf_enum_range(_string, _range_start, _range_end)		\
-	{ _range_start, _range_end, #_string },
+	{ _range_start, _range_end, _string },
 
 #undef TP_ENUM_VALUES
 #define TP_ENUM_VALUES(...)						\
@@ -141,11 +141,10 @@ static const char							\
 #undef TRACE_EVENT_ENUM
 #define TRACE_EVENT_ENUM(_name, _values)
 
-
 #undef TRACEPOINT_ENUM
 #define TRACEPOINT_ENUM(_provider, _name, _type, _values)		\
 	const struct lttng_enum_entry __enum_values__##_provider##_##_name[] = { \
-		_values					\
+		_values							\
 	};
 
 #include TRACEPOINT_INCLUDE
@@ -233,22 +232,21 @@ static const char							\
 	},
 
 #undef _ctf_enum
-#define _ctf_enum(_provider, _name, _item, _src, _nowrite)	  \
-	{							  \
-	  .name = #_item,					  \
-	  .type = {						  \
-	      .atype = atype_enum,			          \
-	      .u = {						  \
-		  .basic = {					  \
-		       .enumeration = {				  \
-			     .name = #_provider "_" #_name	  \
-			   },					  \
-		     },						  \
-		},						  \
-	    },							  \
-	  .nowrite = _nowrite,					  \
+#define _ctf_enum(_provider, _name, _item, _src, _nowrite)	\
+	{							\
+		.name = #_item,					\
+		.type = {					\
+			.atype = atype_enum,			\
+			.u = {					\
+				.basic = {			\
+					.enumeration = {	\
+						.name = #_provider "_" #_name, \
+					 },			\
+				 },				\
+			},					\
+		},						\
+		.nowrite = _nowrite,				\
 	},
-
 
 #undef TP_FIELDS
 #define TP_FIELDS(...) __VA_ARGS__	/* Only one used in this phase */
@@ -270,7 +268,7 @@ static const char							\
 			  .reverse_byte_order = 0,			\
 			  .base = 10,					\
 			  .encoding = lttng_encode_none,		\
-			},						\
+		},							\
 		.entries = __enum_values__##_provider##_##_name,	\
 		.len = _TP_ARRAY_SIZE(__enum_values__##_provider##_##_name), \
 	};
@@ -289,15 +287,14 @@ static const char							\
 #include <lttng/ust-tracepoint-event-nowrite.h>
 
 #undef _ctf_enum
-#define _ctf_enum(_provider, _name, _item, _src, _nowrite)	\
-	{							\
-	  .mtype = mtype_enum,					\
-	  .nowrite = _nowrite,					\
-	  .u = {						\
-	      .ctf_enum = &__enum_##_provider##_##_name,	\
-	    },							\
+#define _ctf_enum(_provider, _name, _item, _src, _nowrite)		\
+	{								\
+		.mtype = mtype_enum,					\
+		.nowrite = _nowrite,					\
+		.u = {							\
+			.ctf_enum = &__enum_##_provider##_##_name,	\
+		},							\
 	},
-
 
 #undef TP_FIELDS
 #define TP_FIELDS(...) __VA_ARGS__	/* Only one used in this phase */
@@ -368,7 +365,7 @@ static void __event_probe__##_provider##___##_name(_TP_ARGS_DATA_PROTO(_args));
 	__event_len += __dynamic_len[__dynamic_len_idx++] = strlen(_src) + 1;
 
 #undef _ctf_enum
-#define _ctf_enum(_provider, _name, _item, _src, _nowrite)		\
+#define _ctf_enum(_provider, _name, _item, _src, _nowrite)		       \
 	__event_len += __enum_get_size__##_provider##___##_name(__event_len);
 
 #undef TP_ARGS
@@ -403,7 +400,6 @@ size_t __enum_get_size__##_provider##___##_name(size_t __event_len)	      \
 	__enum_len += sizeof(_type);					      \
 	return __enum_len;						      \
 }
-
 
 #include TRACEPOINT_INCLUDE
 
@@ -525,6 +521,65 @@ size_t __enum_get_size__##_provider##___##_name(size_t __event_len)	      \
 		__stack_data += sizeof(void *);				       \
 	}
 
+#undef _ctf_enum
+#define _ctf_enum(_provider, _name, _item, _src, _nowrite)			\
+	{									\
+		int64_t __tmp;							\
+		if (__enum_##_provider##_##_name.container_type.signedness) {	\
+			switch (__enum_##_provider##_##_name.container_type.size) { \
+			case 8:							\
+			{							\
+				__tmp = (int64_t) (int8_t) _src;		\
+				break;						\
+			}							\
+			case 16:						\
+			{							\
+				__tmp = (int64_t) (int16_t) _src;		\
+				break;						\
+			}							\
+			case 32:						\
+			{							\
+				__tmp = (int64_t) (int32_t) _src;		\
+				break;						\
+			}							\
+			case 64:						\
+			{							\
+				__tmp = (int64_t) _src;				\
+				break;						\
+			}							\
+			default:						\
+				abort();					\
+			}							\
+		} else {							\
+			switch (__enum_##_provider##_##_name.container_type.size) { \
+			case 8:							\
+			{							\
+				__tmp = (uint64_t) (uint8_t) _src;		\
+				break;						\
+			}							\
+			case 16:						\
+			{							\
+				__tmp = (uint64_t) (uint16_t) _src;		\
+				break;						\
+			}							\
+			case 32:						\
+			{							\
+				__tmp = (uint64_t) (uint32_t) _src;		\
+				break;						\
+			}							\
+			case 64:						\
+			{							\
+				__tmp = (uint64_t) _src;			\
+				break;						\
+			}							\
+			default:						\
+				abort();					\
+			}							\
+		}								\
+		memcpy(__stack_data, &__tmp, sizeof(int64_t));			\
+		__stack_data += sizeof(int64_t);				\
+	}
+
 #undef TP_ARGS
 #define TP_ARGS(...) __VA_ARGS__
 
@@ -576,7 +631,7 @@ void __event_prepare_filter_stack__##_provider##___##_name(char *__stack_data,\
 #define _ctf_string(_item, _src, _nowrite)
 
 #undef _ctf_enum
-#define _ctf_enum(_provider, _name, _item, _src, _nowrite)		\
+#define _ctf_enum(_provider, _name, _item, _src, _nowrite)		      \
 	__event_align = _tp_max_t(size_t, __event_align, __enum_get_align__##_provider##___##_name());
 
 #undef TP_ARGS
@@ -672,12 +727,78 @@ size_t __enum_get_align__##_provider##___##_name(void)			      \
 			__get_dynamic_len(dest));
 
 #undef _ctf_enum
-#define _ctf_enum(_provider, _name, _item, _src, _nowrite)		 \
-	{								 \
-		int __tmp = (_src);					 \
-		lib_ring_buffer_align_ctx(&__ctx, lttng_alignof(__tmp)); \
-		__chan->ops->event_write(&__ctx, &__tmp, sizeof(__tmp)); \
-	}
+#define _ctf_enum(_provider, _name, _item, _src, _nowrite)		\
+{									\
+	lib_ring_buffer_align_ctx(&__ctx,				\
+		__enum_get_align__##_provider##___##_name());		\
+	if (__enum_##_provider##_##_name.container_type.signedness) {	\
+		switch (__enum_##_provider##_##_name.container_type.size) { \
+		case 8:							\
+		{							\
+			int8_t __tmp = (int8_t) _src;			\
+			__chan->ops->event_write(&__ctx, &__tmp,	\
+					sizeof(__tmp));			\
+			break;						\
+		}							\
+		case 16:						\
+		{							\
+			int16_t __tmp = (int16_t) _src;			\
+			__chan->ops->event_write(&__ctx, &__tmp,	\
+					sizeof(__tmp));			\
+			break;						\
+		}							\
+		case 32:						\
+		{							\
+			int32_t __tmp = (int32_t) _src;			\
+			__chan->ops->event_write(&__ctx, &__tmp,	\
+					sizeof(__tmp));			\
+			break;						\
+		}							\
+		case 64:						\
+		{							\
+			int64_t __tmp = (int64_t) _src;			\
+			__chan->ops->event_write(&__ctx, &__tmp,	\
+					sizeof(__tmp));			\
+			break;						\
+		}							\
+		default:						\
+			abort();					\
+		}							\
+	} else {							\
+		switch (__enum_##_provider##_##_name.container_type.size) { \
+		case 8:							\
+		{							\
+			uint8_t __tmp = (uint8_t) _src;			\
+			__chan->ops->event_write(&__ctx, &__tmp,	\
+					sizeof(__tmp));			\
+			break;						\
+		}							\
+		case 16:						\
+		{							\
+			uint16_t __tmp = (uint16_t) _src;		\
+			__chan->ops->event_write(&__ctx, &__tmp,	\
+					sizeof(__tmp));			\
+			break;						\
+		}							\
+		case 32:						\
+		{							\
+			uint32_t __tmp = (uint32_t) _src;		\
+			__chan->ops->event_write(&__ctx, &__tmp,	\
+					sizeof(__tmp));			\
+			break;						\
+		}							\
+		case 64:						\
+		{							\
+			uint64_t __tmp = (uint64_t) _src;		\
+			__chan->ops->event_write(&__ctx, &__tmp,	\
+					sizeof(__tmp));			\
+			break;						\
+		}							\
+		default:						\
+			abort();					\
+		}							\
+	}								\
+}
 
 /* Beware: this get len actually consumes the len value */
 #undef __get_dynamic_len
