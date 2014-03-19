@@ -490,6 +490,9 @@ __tracepoints__ptrs_destroy(void)
  *         * Integer, printed with 0x base 16 * 
  *         ctf_integer_hex(unsigned long, field_d, arg1)
  *
+ *         * Enumeration *
+ *         ctf_enum(component, enum_name, field_e, arg0)
+ *
  *         * Array Sequence, printed as UTF8-encoded array of bytes * 
  *         ctf_array_text(char, field_b, string, FIXED_LEN)
  *         ctf_sequence_text(char, field_c, string, size_t, strlen)
