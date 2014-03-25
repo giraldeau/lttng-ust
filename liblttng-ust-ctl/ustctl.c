@@ -1912,6 +1912,32 @@ int ustctl_recv_register_event(int sock,
 				}
 				break;
 			}
+			case ustctl_mtype_structure:
+			{
+				int entry_len = one_global_type->u.ctf_structure.nr_fields * sizeof(*one_global_type->u.ctf_structure.fields);
+				/* Receive the entries */
+				one_global_type->u.ctf_structure.fields = zmalloc(entry_len);
+				if (!one_global_type->u.ctf_structure.fields) {
+					len = -ENOMEM;
+					goto global_type_error;
+				}
+				len = ustcomm_recv_unix_sock(sock,
+						one_global_type->u.ctf_structure.fields,
+						entry_len);
+				DBG("Received fields for struct %s.\n", one_global_type->u.ctf_structure.name);
+				if (len > 0 && len != entry_len) {
+					len = -EIO;
+					goto global_type_error;
+				}
+				if (len == 0) {
+					len = -EPIPE;
+					goto global_type_error;
+				}
+				if (len < 0) {
+					goto global_type_error;
+				}
+				break;
+			}
 			default:
 				break;
 			}

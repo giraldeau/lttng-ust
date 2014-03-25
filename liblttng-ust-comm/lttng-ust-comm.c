@@ -742,6 +742,7 @@ int serialize_basic_type(enum ustctl_abstract_types *uatype,
 	}
 	case atype_array:
 	case atype_sequence:
+	case atype_structure:
 	default:
 		return -EINVAL;
 	}
@@ -798,6 +799,14 @@ int serialize_one_type(struct ustctl_type *ut, const struct lttng_type *lt)
 		if (ret)
 			return -EINVAL;
 		ut->atype = ustctl_atype_sequence;
+		break;
+	}
+	case atype_structure:
+	{
+		strncpy(ut->u.structure.name, lt->u.structure.name,
+						LTTNG_UST_SYM_NAME_LEN);
+		ut->u.structure.name[LTTNG_UST_SYM_NAME_LEN - 1] = '\0';
+		ut->atype = ustctl_atype_structure;
 		break;
 	}
 	default:
@@ -892,25 +901,82 @@ int serialize_enum(struct ustctl_enum *uenum,
 }
 
 static
-int serialize_global_type_decl(size_t *_nr_write_global_type_decl,
-		struct ustctl_global_type_decl **ustctl_global_type,
+int serialize_structure(struct ustctl_structure *ustruct,
+		const struct lttng_structure *lstruct)
+{
+	int ret;
+
+	strncpy(ustruct->name, lstruct->name, LTTNG_UST_SYM_NAME_LEN);
+	ustruct->name[LTTNG_UST_SYM_NAME_LEN - 1] = '\0';
+
+	/* Serialize the fields */
+	if (lstruct->nr_fields > 0) {
+		ret = serialize_fields(&ustruct->nr_fields, &ustruct->fields,
+				lstruct->nr_fields,	lstruct->fields);
+		if (ret) {
+			return ret;
+		}
+	}
+
+	return 0;
+}
+
+static size_t get_child_global_type_count(size_t nr_global_type_decl,
+		const struct lttng_global_type_decl *lttng_global_type)
+{
+	size_t total_global_types = 0;
+	int i;
+	const struct lttng_global_type_decl *lg;
+
+	for (i = 0; i < nr_global_type_decl; i++) {
+		lg = &lttng_global_type[i];
+
+		if (lg->nowrite)
+			continue;
+
+		/* Count the global types in children as well */
+		switch (lg->mtype) {
+		case mtype_structure:
+		{
+			const struct lttng_structure *ls;
+
+			ls = lg->u.ctf_structure;
+			/* Add the number of global types it contains and the count of its own children */
+			if (ls->nr_global_type_decl > 0) {
+				total_global_types += ls->nr_global_type_decl;
+				total_global_types += get_child_global_type_count(ls->nr_global_type_decl,
+								ls->global_type_decl);
+			}
+			break;
+		}
+		case mtype_enum:
+		default:
+			break;
+		}
+	}
+
+	return total_global_types;
+}
+
+/*
+ * When this method is called, index is the next index to write to and the
+ * ustctl_global_type structure is already initialized and will not overflow.
+ *
+ * The global type declarations are flattened at serialization to avoid
+ * needing to do recursive frees on error.
+ */
+static int _serialize_global_type_decl(size_t *index,
+		struct ustctl_global_type_decl *global_type_decl,
 		size_t nr_global_type_decl,
 		const struct lttng_global_type_decl *lttng_global_type)
 {
-	struct ustctl_global_type_decl *global_type_decl;
 	int i, ret;
-	size_t nr_write_global_type_decl = 0;
-
-	global_type_decl = zmalloc(nr_global_type_decl
-					* sizeof(*global_type_decl));
-	if (!global_type_decl)
-		return -ENOMEM;
 
 	for (i = 0; i < nr_global_type_decl; i++) {
 		struct ustctl_global_type_decl *f;
 		const struct lttng_global_type_decl *lf;
 
-		f = &global_type_decl[nr_write_global_type_decl];
+		f = &global_type_decl[*index];
 		lf = &lttng_global_type[i];
 
 		/* skip 'nowrite' fields */
@@ -928,18 +994,66 @@ int serialize_global_type_decl(size_t *_nr_write_global_type_decl,
 			le = lf->u.ctf_enum;
 			ret = serialize_enum(ue, le);
 			if (ret)
-				goto error;
+				return ret;
 
 			f->mtype = ustctl_mtype_enum;
 			break;
 		}
+		case mtype_structure:
+		{
+			struct ustctl_structure *us;
+			const struct lttng_structure *ls;
+
+			/* Serialize children global types first */
+			ls = lf->u.ctf_structure;
+			ret = _serialize_global_type_decl(index,
+					global_type_decl,
+					ls->nr_global_type_decl,
+					ls->global_type_decl);
+			if (ret)
+				return ret;
+
+			/* Reinitialize f since the index may have changed */
+			f = &global_type_decl[*index];
+			us = &f->u.ctf_structure;
+
+			ret = serialize_structure(us, ls);
+			if (ret)
+				return ret;
+
+			f->mtype = ustctl_mtype_structure;
+			break;
+		}
 		default:
-			ret = -EINVAL;
-			goto error;
+			return -EINVAL;
 		}
 
-		nr_write_global_type_decl++;
+		*index = *index + 1;
 	}
+	return 0;
+}
+
+static
+int serialize_global_type_decl(size_t *_nr_write_global_type_decl,
+		struct ustctl_global_type_decl **ustctl_global_type,
+		size_t nr_global_type_decl,
+		const struct lttng_global_type_decl *lttng_global_type)
+{
+	struct ustctl_global_type_decl *global_type_decl;
+	int i, ret;
+	size_t nr_write_global_type_decl = 0;
+	size_t nr_child_global_type_cnt = get_child_global_type_count(nr_global_type_decl,
+							lttng_global_type);
+
+	global_type_decl = zmalloc((nr_global_type_decl + nr_child_global_type_cnt)
+					* sizeof(*global_type_decl));
+	if (!global_type_decl)
+		return -ENOMEM;
+
+	ret = _serialize_global_type_decl(&nr_write_global_type_decl, global_type_decl,
+			nr_global_type_decl, lttng_global_type);
+	if (ret)
+		goto error;
 
 	*_nr_write_global_type_decl = nr_write_global_type_decl;
 	*ustctl_global_type = global_type_decl;
@@ -953,6 +1067,9 @@ error:
 		switch (m->mtype) {
 		case ustctl_mtype_enum:
 			free(m->u.ctf_enum.entries);
+			break;
+		case ustctl_mtype_structure:
+			free(m->u.ctf_structure.fields);
 			break;
 		default:
 			break;
@@ -1158,15 +1275,31 @@ int ustcomm_register_event(int sock,
 				}
 				break;
 			}
+			case ustctl_mtype_structure:
+			{
+				int field_len = one_global_type->u.ctf_structure.nr_fields * sizeof(*one_global_type->u.ctf_structure.fields);
+
+				/* Send the fields */
+				DBG("Sending fields for global type structure %s.\n",
+						one_global_type->u.ctf_structure.name);
+				len = ustcomm_send_unix_sock(sock, one_global_type->u.ctf_structure.fields, field_len);
+				free(one_global_type->u.ctf_structure.fields);
+				one_global_type->u.ctf_structure.fields = NULL;
+				if (len > 0 && len != field_len) {
+					goto error_global_type;
+				}
+				if (len < 0) {
+					goto error_global_type;
+				}
+				break;
+			}
 			default:
 				break;
 			}
 		}
-		free(global_type_decl);
 
-	} else {
-		free(global_type_decl);
 	}
+	free(global_type_decl);
 
 	/* receive reply */
 	len = ustcomm_recv_unix_sock(sock, &reply, sizeof(reply));
@@ -1211,6 +1344,9 @@ error_global_type:
 		switch (one_global_type->mtype) {
 		case ustctl_mtype_enum:
 			free(one_global_type->u.ctf_enum.entries);
+			break;
+		case ustctl_mtype_structure:
+			free(one_global_type->u.ctf_structure.fields);
 			break;
 		default:
 			break;
