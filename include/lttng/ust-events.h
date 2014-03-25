@@ -86,6 +86,7 @@ enum lttng_abstract_types {
 	atype_sequence,
 	atype_string,
 	atype_float,
+	atype_structure,
 	NR_ABSTRACT_TYPES,
 };
 
@@ -100,6 +101,7 @@ enum lttng_string_encodings {
 /* CTF categories for global types declared outside event descriptions */
 enum lttng_global_type_categories {
 	mtype_enum,
+	mtype_structure,
 	NR_GLOBAL_TYPES,
 };
 
@@ -211,6 +213,9 @@ struct lttng_type {
 			struct lttng_basic_type length_type;
 			struct lttng_basic_type elem_type;
 		} sequence;
+		struct {
+			const char *name;
+		} structure;
 		char padding[LTTNG_UST_TYPE_PADDING];
 	} u;
 };
@@ -224,12 +229,24 @@ struct lttng_enum {
 	char padding[LTTNG_UST_ENUM_TYPE_PADDING];
 };
 
+#define LTTNG_UST_STRUCT_TYPE_PADDING 20
+struct lttng_structure {
+	const char *name;
+	size_t nr_fields;
+	const struct lttng_event_field *fields;
+	/* Global types required by this structure. */
+	unsigned int nr_global_type_decl;
+	const struct lttng_global_type_decl *global_type_decl;
+	char padding[LTTNG_UST_STRUCT_TYPE_PADDING];
+};
+
 #define LTTNG_UST_GLOBAL_TYPES_PADDING	60
 struct lttng_global_type_decl {
 	enum lttng_global_type_categories mtype;
 	unsigned int nowrite; /* inherited from the field using it */
 	union {
 		const struct lttng_enum *ctf_enum;
+		const struct lttng_structure *ctf_structure;
 		char padding[LTTNG_UST_GLOBAL_TYPES_PADDING];
 	} u;
 };

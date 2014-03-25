@@ -268,6 +268,7 @@ enum ustctl_abstract_types {
 	ustctl_atype_sequence,
 	ustctl_atype_string,
 	ustctl_atype_float,
+	ustctl_atype_structure,
 	NR_USTCTL_ABSTRACT_TYPES,
 };
 
@@ -338,6 +339,9 @@ struct ustctl_type {
 			struct ustctl_basic_type length_type;
 			struct ustctl_basic_type elem_type;
 		} sequence;
+		struct {
+			char name[LTTNG_UST_SYM_NAME_LEN];
+		} structure;
 		char padding[USTCTL_UST_TYPE_PADDING];
 	} u;
 } LTTNG_PACKED;
@@ -351,9 +355,18 @@ struct ustctl_enum {
 	char padding[USTCTL_UST_ENUM_TYPE_PADDING];
 } LTTNG_PACKED;
 
+#define USTCTL_UST_STRUCT_TYPE_PADDING	368
+struct ustctl_structure {
+	char name[LTTNG_UST_SYM_NAME_LEN];
+	size_t nr_fields;
+	struct ustctl_field *fields;
+	char padding[USTCTL_UST_STRUCT_TYPE_PADDING];
+};
+
 /* CTF categories for global types declared outside event descriptions */
 enum ustctl_global_type_categories {
 	ustctl_mtype_enum,
+	ustctl_mtype_structure,
 	NR_USTCTL_GLOBAL_TYPES,
 };
 
@@ -362,6 +375,7 @@ struct ustctl_global_type_decl {
 	uint32_t mtype;
 	union {
 		struct ustctl_enum ctf_enum;
+		struct ustctl_structure ctf_structure;
 		char padding[USTCTL_UST_GLOBAL_TYPE_DECL_PADDING];
 	} u;
 } LTTNG_PACKED;
