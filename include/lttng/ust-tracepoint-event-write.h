@@ -65,3 +65,7 @@
 #undef ctf_enum
 #define ctf_enum(_provider, _name, _item, _src)			\
 	_ctf_enum(_provider, _name, _item, _src, 0)
+
+#undef ctf_struct
+#define ctf_struct(_provider, _name, _item, _src...)	\
+	_ctf_struct(_provider, _name, _item, 0, _src)

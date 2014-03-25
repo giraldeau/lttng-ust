@@ -467,6 +467,70 @@ __tracepoints__ptrs_destroy(void)
 
 #endif /* #ifndef TRACEPOINT_ENUM */
 
+#ifndef TRACEPOINT_STRUCT
+
+/*
+ * Tracepoint Structures
+ *
+ * Structures are compound types used to group fields together. These types
+ * can be reused by different tracepoints.
+ *
+ * An example:
+ *
+ * TRACEPOINT_STRUCT(someproject_component, structname,
+ *
+ *	   * TP_ARGS takes from 0 to 10 "type, field_name" pairs *
+ *
+ *     TP_ARGS(int, arg0, void *, arg1, char *, string, size_t, strlen,
+ *             long *, arg4, size_t, arg4_len),
+ *
+ *     * TP_FIELDS describes the structure payload layout in the trace *
+ *
+ *     TP_FIELDS(
+ *         * Integer, printed in base 10 *
+ *         ctf_integer(int, field_a, arg0)
+ *
+ *         * Integer, printed with 0x base 16 *
+ *         ctf_integer_hex(unsigned long, field_d, arg1)
+ *
+ *         * Enumeration *
+ *         ctf_enum(component, name, field_e, arg)
+ *
+ *         * Array Sequence, printed as UTF8-encoded array of bytes *
+ *         ctf_array_text(char, field_b, string, FIXED_LEN)
+ *         ctf_sequence_text(char, field_c, string, size_t, strlen)
+ *
+ *         * String, printed as UTF8-encoded string *
+ *         ctf_string(field_e, string)
+ *
+ *         * Array sequence of signed integer values *
+ *         ctf_array(long, field_f, arg4, FIXED_LEN4)
+ *         ctf_sequence(long, field_g, arg4, size_t, arg4_len)
+ *
+ *         * Structures *
+ *         ctf_struct(component, struct_name, field_s, args...)
+ *     )
+ * )
+ *
+ * Where "someproject_component" is the name of the component this structure
+ * belongs to and "structname" identifies this structure. The arguments and
+ * fields described after are the same as for an event. See the event
+ * documentation for more information.
+ *
+ * That structure can then be used in a field inside the TP_FIELD macro, either
+ * in another structure or in an event using the following line:
+ *
+ * ctf_struct(someproject_component, structname, field, arguments...)
+ *
+ * Where "someproject_component" and "structname" match those in the
+ * TRACEPOINT_STRUCT, "field" is the name of the field and the arguments
+ * correspond to what the TRACEPOINT_STRUCT receives.
+ */
+
+#define TRACEPOINT_STRUCT(provider, name, args, fields)
+
+#endif /* #ifndef TRACEPOINT_STRUCT */
+
 #ifndef TRACEPOINT_EVENT
 
 /*
@@ -503,6 +567,9 @@ __tracepoints__ptrs_destroy(void)
  *         * Array sequence of signed integer values * 
  *         ctf_array(long, field_f, arg4, FIXED_LEN4)
  *         ctf_sequence(long, field_g, arg4, size_t, arg4_len)
+ *
+ *         * Structures *
+ *         ctf_struct(component, struct_name, field_s, args...)
  *     )
  * )
  *

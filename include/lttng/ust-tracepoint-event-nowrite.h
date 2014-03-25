@@ -53,3 +53,7 @@
 #undef ctf_enum_nowrite
 #define ctf_enum_nowrite(_provider, _name, _item, _src)		\
 	_ctf_enum(_provider, _name, _item, _src, 1)
+
+#undef ctf_struct_nowrite
+#define ctf_struct_nowrite(_provider, _name, _item, _src...)	\
+	_ctf_struct(_provider, _name, _item, 1, _src)

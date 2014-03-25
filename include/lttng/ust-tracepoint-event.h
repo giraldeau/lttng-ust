@@ -259,6 +259,21 @@ static const char							\
 		  .encoding = lttng_encode_none,		\
 	}
 
+#undef _ctf_struct
+#define _ctf_struct(_provider, _name, _item, _nowrite, _src...)		\
+		{							\
+		.name = #_item,						\
+		.type = {						\
+			.atype = atype_structure,			\
+			.u = {						\
+				.structure = {				\
+					.name = #_provider "_" #_name,	\
+				},					\
+			},						\
+		},							\
+		.nowrite = _nowrite,					\
+	}
+
 #undef TP_FIELDS
 #define TP_FIELDS(...) __VA_ARGS__	/* Only one used in this phase */
 
@@ -276,6 +291,13 @@ static const char							\
 		.entries = __enum_values__##_provider##_##_name,	\
 		.len = _TP_ARRAY_SIZE(__enum_values__##_provider##_##_name), \
 	};
+
+#undef TRACEPOINT_STRUCT
+#define TRACEPOINT_STRUCT(_provider, _name, _args, _fields)		\
+	static const struct lttng_event_field __struct_fields___##_provider##___##_name[] = { \
+		_fields							\
+	};
+
 
 #include TRACEPOINT_INCLUDE
 
@@ -300,6 +322,16 @@ static const char							\
 		},							\
 	},
 
+#undef _ctf_struct
+#define _ctf_struct(_provider, _name, _item, _nowrite, _src...)		    \
+	{								    \
+		.mtype = mtype_structure,				    \
+		.nowrite = _nowrite,					    \
+		.u = {							    \
+			.ctf_structure = &__structure_##_provider##_##_name \
+		},							    \
+	}
+
 #undef TP_FIELDS
 #define TP_FIELDS(...) __VA_ARGS__	/* Only one used in this phase */
 
@@ -307,6 +339,19 @@ static const char							\
 #define TRACEPOINT_EVENT_CLASS(_provider, _name, _args, _fields) \
 	static const struct lttng_global_type_decl __global_types_for___##_provider##___##_name[] = { \
 		_fields						 \
+	};
+
+#undef TRACEPOINT_STRUCT
+#define TRACEPOINT_STRUCT(_provider, _name, _args, _fields)		\
+	static const struct lttng_global_type_decl __global_types_for_struct___##_provider##___##_name[] = { \
+		_fields							\
+	};								\
+	static const struct lttng_structure __structure_##_provider##_##_name = { \
+		.name = #_provider "_" #_name,				\
+		.nr_fields = _TP_ARRAY_SIZE(__struct_fields___##_provider##___##_name), \
+		.fields = __struct_fields___##_provider##___##_name,	\
+		.nr_global_type_decl = _TP_ARRAY_SIZE(__global_types_for_struct___##_provider##___##_name), \
+		.global_type_decl = __global_types_for_struct___##_provider##___##_name, \
 	};
 
 #include TRACEPOINT_INCLUDE
@@ -376,6 +421,10 @@ static void __event_probe__##_provider##___##_name(_TP_ARGS_DATA_PROTO(_args));
 #define ctf_enum_integer(_type)						       \
 	_type
 
+#undef _ctf_struct
+#define _ctf_struct(_provider, _name, _item, _nowrite, _src...)				   \
+	__event_len += __struct_get_size__##_provider##___##_name(__dynamic_len, __dynamic_len_idx, _src);
+
 #undef TP_ARGS
 #define TP_ARGS(...) __VA_ARGS__
 
@@ -407,6 +456,17 @@ size_t __enum_get_size__##_provider##___##_name(size_t __event_len)	      \
 	__enum_len = lib_ring_buffer_align(__event_len, lttng_alignof(_type)); \
 	__enum_len += sizeof(_type);					      \
 	return __enum_len;						      \
+}
+
+#undef TRACEPOINT_STRUCT
+#define TRACEPOINT_STRUCT(_provider, _name, _args, _fields)		\
+static inline								\
+size_t __struct_get_size__##_provider##___##_name(size_t *__dynamic_len,\
+		unsigned int __dynamic_len_idx, _TP_ARGS_PROTO(_args)) \
+{									\
+	size_t __event_len = 0;						\
+	_fields								\
+	return __event_len;						\
 }
 
 #include TRACEPOINT_INCLUDE
@@ -642,6 +702,10 @@ void __event_prepare_filter_stack__##_provider##___##_name(char *__stack_data,\
 #define _ctf_enum(_provider, _name, _item, _src, _nowrite)		      \
 	__event_align = _tp_max_t(size_t, __event_align, __enum_get_align__##_provider##___##_name());
 
+#undef _ctf_struct
+#define _ctf_struct(_provider, _name, _item, _nowrite, _src...)				   \
+	__event_align = _tp_max_t(size_t, __event_align, __struct_get_align__##_provider##___##_name(_src));
+
 #undef TP_ARGS
 #define TP_ARGS(...) __VA_ARGS__
 
@@ -668,8 +732,43 @@ size_t __enum_get_align__##_provider##___##_name(void)			      \
 	return lttng_alignof(_type);					      \
 }
 
+#undef TRACEPOINT_STRUCT
+#define TRACEPOINT_STRUCT(_provider, _name, _args, _fields)		      \
+static inline								      \
+size_t __struct_get_align__##_provider##___##_name(_TP_ARGS_PROTO(_args))\
+{									      \
+	size_t __event_align = 1;					      \
+	_fields								      \
+	return __event_align;						      \
+}
+
 #include TRACEPOINT_INCLUDE
 
+/*
+ * State 4.9 of tracepoint event generation
+ *
+ * Get the maximum field count from event fields recursively
+ */
+/* Reset all macros within TRACEPOINT_EVENT */
+#include <lttng/ust-tracepoint-event-reset.h>
+#include <lttng/ust-tracepoint-event-write.h>
+
+#undef _ctf_struct
+#define _ctf_struct(_provider, _name, _item, _nowrite, _src...)		      \
+	+ __struct_event_count___##_provider##___##_name
+
+#undef TRACEPOINT_STRUCT
+#define TRACEPOINT_STRUCT(_provider, _name, _args, _fields)		      \
+static const size_t __struct_field_count___##_provider##___##_name =	      \
+	_TP_ARRAY_SIZE(__struct_fields___##_provider##___##_name) _fields;
+
+#undef TRACEPOINT_EVENT_CLASS
+#define TRACEPOINT_EVENT_CLASS(_provider, _name, _args, _fields)	      \
+static const size_t __event_field_count___##_provider##___##_name =	      \
+	_TP_ARRAY_SIZE(__event_fields___##_provider##___##_name) _fields;
+
+
+#include TRACEPOINT_INCLUDE
 
 /*
  * Stage 5 of tracepoint event generation.
@@ -707,7 +806,7 @@ size_t __enum_get_align__##_provider##___##_name(void)			      \
 #define _ctf_sequence_encoded(_type, _item, _src, _length_type,		\
 			_src_length, _encoding, _nowrite)		\
 	{								\
-		_length_type __tmpl = __stackvar.__dynamic_len[__dynamic_len_idx]; \
+		_length_type __tmpl = __dynamic_len[__dynamic_len_idx]; \
 		lib_ring_buffer_align_ctx(&__ctx, lttng_alignof(_length_type));\
 		__chan->ops->event_write(&__ctx, &__tmpl, sizeof(_length_type));\
 	}								\
@@ -808,15 +907,35 @@ size_t __enum_get_align__##_provider##___##_name(void)			      \
 	}								\
 }
 
+#undef _ctf_struct
+#define _ctf_struct(_provider, _name, _item, _nowrite, _src...)		\
+	__struct_probe__##_provider##___##_name(__chan, __ctx, __dynamic_len_idx, __dynamic_len, _src);
+
 /* Beware: this get len actually consumes the len value */
 #undef __get_dynamic_len
-#define __get_dynamic_len(field)	__stackvar.__dynamic_len[__dynamic_len_idx++]
+#define __get_dynamic_len(field)	__dynamic_len[__dynamic_len_idx++]
 
 #undef TP_ARGS
 #define TP_ARGS(...) __VA_ARGS__
 
 #undef TP_FIELDS
 #define TP_FIELDS(...) __VA_ARGS__
+
+/*
+ * Probe for structures will call this method
+ */
+#undef TRACEPOINT_STRUCT
+#define TRACEPOINT_STRUCT(_provider, _name, _args, _fields)		      \
+static inline								      \
+void __struct_probe__##_provider##___##_name(struct lttng_channel *__chan,  \
+	struct lttng_ust_lib_ring_buffer_ctx __ctx, size_t __dynamic_len_idx, \
+	size_t *__dynamic_len, _TP_ARGS_PROTO(_args))			      \
+{									      \
+	if (0) {							      \
+		(void) __dynamic_len;					      \
+	}								      \
+	_fields								      \
+}
 
 /*
  * For state dump, check that "session" argument (mandatory) matches the
@@ -850,9 +969,10 @@ void __event_probe__##_provider##___##_name(_TP_ARGS_DATA_PROTO(_args))	      \
 	size_t __event_len, __event_align;				      \
 	size_t __dynamic_len_idx = 0;					      \
 	union {								      \
-		size_t __dynamic_len[_TP_ARRAY_SIZE(__event_fields___##_provider##___##_name)]; \
+		size_t __dynamic_len[__event_field_count___##_provider##___##_name];			      \
 		char __filter_stack_data[2 * sizeof(unsigned long) * _TP_ARRAY_SIZE(__event_fields___##_provider##___##_name)]; \
 	} __stackvar;							      \
+	size_t *__dynamic_len = __stackvar.__dynamic_len;		      \
 	int __ret;							      \
 									      \
 	if (0)								      \
@@ -881,7 +1001,7 @@ void __event_probe__##_provider##___##_name(_TP_ARGS_DATA_PROTO(_args))	      \
 		if (caa_likely(!__filter_record))			      \
 			return;						      \
 	}								      \
-	__event_len = __event_get_size__##_provider##___##_name(__stackvar.__dynamic_len, \
+	__event_len = __event_get_size__##_provider##___##_name(__dynamic_len, \
 		 _TP_ARGS_DATA_VAR(_args));				      \
 	__event_align = __event_get_align__##_provider##___##_name(_TP_ARGS_VAR(_args)); \
 	lib_ring_buffer_ctx_init(&__ctx, __chan->chan, __event, __event_len,  \

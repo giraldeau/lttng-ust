@@ -31,6 +31,9 @@
 #undef TRACEPOINT_ENUM
 #define TRACEPOINT_ENUM(_provider, _name, _type, _values)
 
+#undef TRACEPOINT_STRUCT
+#define TRACEPOINT_STRUCT(_provider, _name, _args, _fields)
+
 #undef TP_ARGS
 #define TP_ARGS(...)
 
@@ -66,6 +69,9 @@
 
 #undef _ctf_enum
 #define _ctf_enum(_provider, _name, _item, _src, _nowrite)
+
+#undef _ctf_struct
+#define _ctf_struct(_provider, _name, _item, _nowrite, _src...)
 
 #undef ctf_enum_integer
 #define ctf_enum_integer(_type)
@@ -104,6 +110,9 @@
 #undef ctf_enum
 #define ctf_enum(_provider, _name, _item, _src)
 
+#undef ctf_struct
+#define ctf_struct(_provider, _name, _item, _src...)
+
 /* "nowrite" */
 #undef ctf_integer_nowrite
 #define ctf_integer_nowrite(_type, _item, _src)
@@ -128,3 +137,6 @@
 
 #undef ctf_enum_nowrite
 #define ctf_enum_nowrite(_provider, _name, _item, _src)
+
+#undef ctf_struct_nowrite
+#define ctf_struct_nowrite(_provider, _name, _item, _src...)
