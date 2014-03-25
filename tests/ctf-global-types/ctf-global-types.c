@@ -25,6 +25,7 @@ int main(int argc, char **argv)
 {
 	int i;
 	int delay = 0;
+	char text[10] = "test";
 
 	if (argc == 2)
 		delay = atoi(argv[1]);
@@ -34,8 +35,11 @@ int main(int argc, char **argv)
 	sleep(delay);
 
 	fprintf(stderr, "Tracing... ");
-	for (i = 0; i < 100; i++) {
-		tracepoint(ust_tests_ctf_global_types, tptest, i, (i % 6));
+	for (i = 0; i < 20; i++) {
+		tracepoint(ust_tests_ctf_global_types, tptest, i, (i % 6), text, strlen(text));
+		if (i == 10) {
+			strcpy(text, "abcdefgh");
+		}
 	}
 
 	for (i = 0; i < 10; i++) {

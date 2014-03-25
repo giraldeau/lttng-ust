@@ -38,16 +38,36 @@ TRACEPOINT_ENUM(ust_tests_ctf_global_types, testenum,
 	)
 )
 
+TRACEPOINT_STRUCT(ust_tests_ctf_global_types, inner,
+	TP_ARGS(char *, text, size_t, textlen,
+		int, enumvalue),
+	TP_FIELDS(
+		ctf_array(char, arrfield, text, 10)
+		ctf_sequence(char, seqfield, text, size_t, textlen)
+		ctf_enum(ust_tests_ctf_global_types, testenum, enumfield, enumvalue)
+	)
+)
+
+TRACEPOINT_STRUCT(ust_tests_ctf_global_types, outer,
+	TP_ARGS(char *, text, size_t, textlen,
+		int, enumvalue),
+	TP_FIELDS(
+		ctf_string(stringfield, text)
+		ctf_struct(ust_tests_ctf_global_types, inner, structfield, text, textlen, enumvalue)
+	)
+)
+
 /*
  * Enumeration field is used twice to make sure the global type declaration
  * is entered only once in the metadata file.
  */
 TRACEPOINT_EVENT(ust_tests_ctf_global_types, tptest,
-	TP_ARGS(int, anint, int, enumval),
+	TP_ARGS(int, anint, int, enumval, char *, text, size_t, textlen),
 	TP_FIELDS(
 		ctf_integer(int, intfield, anint)
 		ctf_enum(ust_tests_ctf_global_types, testenum, enumfield, enumval)
 		ctf_enum(ust_tests_ctf_global_types, testenum, enumfield_bis, enumval)
+		ctf_struct(ust_tests_ctf_global_types, outer, structfield, text, textlen, enumval)
 	)
 )
 
