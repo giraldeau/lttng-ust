@@ -386,6 +386,7 @@ AC_CONFIG_FILES([
 	tools/Makefile
 	tests/Makefile
 	tests/ctf-global-types/Makefile
+	tests/ctf-dynseq/Makefile
 	tests/hello/Makefile
 	tests/hello.cxx/Makefile
 	tests/same_line_tracepoint/Makefile

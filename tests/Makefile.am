@@ -1,4 +1,4 @@
-SUBDIRS = utils hello same_line_tracepoint snprintf benchmark ctf-global-types
+SUBDIRS = utils hello same_line_tracepoint snprintf benchmark ctf-global-types ctf-dynseq
 
 if CXX_WORKS
 SUBDIRS += hello.cxx
