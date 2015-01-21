@@ -272,7 +272,7 @@ static const char							\
 			},						\
 		},							\
 		.nowrite = _nowrite,					\
-	}
+	},
 
 #undef TP_FIELDS
 #define TP_FIELDS(...) __VA_ARGS__	/* Only one used in this phase */
