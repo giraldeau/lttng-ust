@@ -316,6 +316,9 @@ union _ustctl_basic_type {
 	struct {
 		char name[LTTNG_UST_SYM_NAME_LEN];
 	} enumeration;
+	struct {
+		char name[LTTNG_UST_SYM_NAME_LEN];
+	} substructure;
 	char padding[USTCTL_UST_BASIC_TYPE_PADDING];
 } LTTNG_PACKED;
 

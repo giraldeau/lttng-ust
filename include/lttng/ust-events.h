@@ -190,6 +190,9 @@ union _lttng_basic_type {
 		enum lttng_string_encodings encoding;
 	} string;
 	struct lttng_float_type _float;
+	struct {
+		const char *name;
+	} substructure;
 	char padding[LTTNG_UST_BASIC_TYPE_PADDING];
 };
 

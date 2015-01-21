@@ -69,3 +69,7 @@
 #undef ctf_struct
 #define ctf_struct(_provider, _name, _item, _src...)	\
 	_ctf_struct(_provider, _name, _item, 0, _src)
+
+#undef ctf_sequence_of_struct
+#define ctf_sequence_of_struct(_provider, _name, _item, _src, _length_type, _length)	\
+	_ctf_sequence_of_struct(_provider, _name, _item, _src, _length_type, _length, 0)

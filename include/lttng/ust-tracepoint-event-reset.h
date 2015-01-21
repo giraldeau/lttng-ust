@@ -73,6 +73,9 @@
 #undef _ctf_struct
 #define _ctf_struct(_provider, _name, _item, _nowrite, _src...)
 
+#undef _ctf_sequence_of_struct
+#define _ctf_sequence_of_struct(_provider, _name, _item, _src, _length_type, _length, _nowrite)
+
 #undef ctf_enum_integer
 #define ctf_enum_integer(_type)
 

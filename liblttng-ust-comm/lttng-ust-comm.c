@@ -740,9 +740,16 @@ int serialize_basic_type(enum ustctl_abstract_types *uatype,
 		*uatype = ustctl_atype_enum;
 		break;
 	}
+	case atype_structure:
+	{
+		strncpy(ubt->substructure.name, lbt->substructure.name,
+				LTTNG_UST_SYM_NAME_LEN);
+		ubt->substructure.name[LTTNG_UST_SYM_NAME_LEN - 1] = '\0';
+		*uatype = ustctl_atype_structure;
+		break;
+	}
 	case atype_array:
 	case atype_sequence:
-	case atype_structure:
 	default:
 		return -EINVAL;
 	}

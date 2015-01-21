@@ -273,6 +273,40 @@ static const char							\
 		},							\
 		.nowrite = _nowrite,					\
 	}
+/*
+#undef ctf_sequence_of_struct
+#define ctf_sequence_of_struct(_provider, _name, _item, _src, _length_type, _length)	\
+	_ctf_sequence_of_struct(_provider, _name, _item, _src, _length_type, _length, 0)
+ */
+
+#undef _ctf_sequence_of_struct
+#define _ctf_sequence_of_struct(_provider, _name, _item, _src, _length_type, _length, _nowrite)	\
+	{							\
+	  .name = #_item,					\
+	  .type =						\
+		{						\
+		  .atype = atype_sequence,			\
+		  .u =						\
+			{					\
+			  .sequence =				\
+				{				\
+				  .length_type = __type_integer(_length_type, BYTE_ORDER, 10, none), \
+				  .elem_type = {	\
+						  .atype = atype_structure,	\
+						  .u = {	\
+							.basic = {	\
+									.substructure = {	\
+										.name = #_provider "_" #_name,	\
+									},	\
+								},	\
+							},	\
+						},		\
+				},				\
+			},					\
+		},						\
+	  .nowrite = _nowrite,					\
+	},
+
 
 #undef TP_FIELDS
 #define TP_FIELDS(...) __VA_ARGS__	/* Only one used in this phase */
@@ -324,6 +358,16 @@ static const char							\
 
 #undef _ctf_struct
 #define _ctf_struct(_provider, _name, _item, _nowrite, _src...)		    \
+	{								    \
+		.mtype = mtype_structure,				    \
+		.nowrite = _nowrite,					    \
+		.u = {							    \
+			.ctf_structure = &__structure_##_provider##_##_name \
+		},							    \
+	}
+
+#undef _ctf_sequence_of_struct
+#define _ctf_sequence_of_struct(_provider, _name, _item, _src, _length_type, _length, _nowrite)	\
 	{								    \
 		.mtype = mtype_structure,				    \
 		.nowrite = _nowrite,					    \
@@ -425,6 +469,15 @@ static void __event_probe__##_provider##___##_name(_TP_ARGS_DATA_PROTO(_args));
 #define _ctf_struct(_provider, _name, _item, _nowrite, _src...)				   \
 	__event_len += __struct_get_size__##_provider##___##_name(__dynamic_len, __dynamic_len_idx, _src);
 
+#undef _ctf_sequence_of_struct
+#define _ctf_sequence_of_struct(_provider, _name, _item, _src, _length_type, _length, _nowrite)	\
+	__event_len += lib_ring_buffer_align(__event_len, lttng_alignof(_length_type));   \
+	__event_len += sizeof(_length_type);				       \
+	__event_len += lib_ring_buffer_align(__event_len, lttng_alignof(_type)); \
+	for (__extra_idx = 0; __extra_idx < _length; __extra_idx++) {	\
+		__event_len += __struct_get_size__##_provider##___##_name(__dynamic_len, __dynamic_len_idx, &_src[__extra_idx]);		       \
+	}
+
 #undef TP_ARGS
 #define TP_ARGS(...) __VA_ARGS__
 
@@ -439,10 +492,13 @@ static inline								      \
 size_t __event_get_size__##_provider##___##_name(size_t *__dynamic_len, _TP_ARGS_DATA_PROTO(_args)) \
 {									      \
 	size_t __event_len = 0;						      \
+	size_t __extra_idx = 0;						      \
 	unsigned int __dynamic_len_idx = 0;				      \
 									      \
-	if (0)								      \
+	if (0) {							      \
 		(void) __dynamic_len_idx;	/* don't warn if unused */    \
+		(void) __extra_idx;					      \
+	}								      \
 	_fields								      \
 	return __event_len;						      \
 }
@@ -465,6 +521,8 @@ size_t __struct_get_size__##_provider##___##_name(size_t *__dynamic_len,\
 		unsigned int __dynamic_len_idx, _TP_ARGS_PROTO(_args)) \
 {									\
 	size_t __event_len = 0;						\
+	size_t __extra_idx = 0;						\
+	(void) __extra_idx;						\
 	_fields								\
 	return __event_len;						\
 }
@@ -706,6 +764,12 @@ void __event_prepare_filter_stack__##_provider##___##_name(char *__stack_data,\
 #define _ctf_struct(_provider, _name, _item, _nowrite, _src...)				   \
 	__event_align = _tp_max_t(size_t, __event_align, __struct_get_align__##_provider##___##_name(_src));
 
+#undef _ctf_sequence_of_struct
+#define _ctf_sequence_of_struct(_provider, _name, _item, _src, _length_type, _length, _nowrite)	\
+	for (__extra_idx = 0; __extra_idx < _length; __extra_idx++) {	\
+		__event_align = _tp_max_t(size_t, __event_align, __struct_get_align__##_provider##___##_name(&_src[__extra_idx]));	\
+	}
+
 #undef TP_ARGS
 #define TP_ARGS(...) __VA_ARGS__
 
@@ -719,6 +783,11 @@ size_t __event_get_align__##_provider##___##_name(_TP_ARGS_PROTO(_args));     \
 static inline								      \
 size_t __event_get_align__##_provider##___##_name(_TP_ARGS_PROTO(_args))      \
 {									      \
+	size_t __extra_idx = 0;						      \
+									      \
+	if (0) {							      \
+		(void) __extra_idx;					      \
+	}								      \
 	size_t __event_align = 1;					      \
 	_fields								      \
 	return __event_align;						      \
@@ -736,7 +805,12 @@ size_t __enum_get_align__##_provider##___##_name(void)			      \
 #define TRACEPOINT_STRUCT(_provider, _name, _args, _fields)		      \
 static inline								      \
 size_t __struct_get_align__##_provider##___##_name(_TP_ARGS_PROTO(_args))\
-{									      \
+{	                                                                      \
+	size_t __extra_idx = 0;						      \
+									      \
+	if (0) {							      \
+		(void) __extra_idx;					      \
+	}								      \
 	size_t __event_align = 1;					      \
 	_fields								      \
 	return __event_align;						      \
@@ -911,6 +985,13 @@ static const size_t __event_field_count___##_provider##___##_name =	      \
 #define _ctf_struct(_provider, _name, _item, _nowrite, _src...)		\
 	__struct_probe__##_provider##___##_name(__chan, __ctx, __dynamic_len_idx, __dynamic_len, _src);
 
+#undef _ctf_sequence_of_struct
+#define _ctf_sequence_of_struct(_provider, _name, _item, _src, _length_type, _length, _nowrite)	\
+	for (__extra_idx = 0; __extra_idx < _length; __extra_idx++) {	\
+		__struct_probe__##_provider##___##_name(__chan, __ctx, __dynamic_len_idx, __dynamic_len, &_src[__extra_idx]);	\
+	}
+
+
 /* Beware: this get len actually consumes the len value */
 #undef __get_dynamic_len
 #define __get_dynamic_len(field)	__dynamic_len[__dynamic_len_idx++]
@@ -931,8 +1012,10 @@ void __struct_probe__##_provider##___##_name(struct lttng_channel *__chan,  \
 	struct lttng_ust_lib_ring_buffer_ctx __ctx, size_t __dynamic_len_idx, \
 	size_t *__dynamic_len, _TP_ARGS_PROTO(_args))			      \
 {									      \
+	size_t __extra_idx;						      \
 	if (0) {							      \
 		(void) __dynamic_len;					      \
+		(void) __extra_idx;					      \
 	}								      \
 	_fields								      \
 }
@@ -966,7 +1049,7 @@ void __event_probe__##_provider##___##_name(_TP_ARGS_DATA_PROTO(_args))	      \
 	struct lttng_event *__event = (struct lttng_event *) __tp_data;			      \
 	struct lttng_channel *__chan = __event->chan;			      \
 	struct lttng_ust_lib_ring_buffer_ctx __ctx;			      \
-	size_t __event_len, __event_align;				      \
+	size_t __event_len, __event_align, __extra_idx;			      \
 	size_t __dynamic_len_idx = 0;					      \
 	union {								      \
 		size_t __dynamic_len[__event_field_count___##_provider##___##_name];			      \
@@ -975,8 +1058,10 @@ void __event_probe__##_provider##___##_name(_TP_ARGS_DATA_PROTO(_args))	      \
 	size_t *__dynamic_len = __stackvar.__dynamic_len;		      \
 	int __ret;							      \
 									      \
-	if (0)								      \
+	if (0)	{							      \
 		(void) __dynamic_len_idx;	/* don't warn if unused */    \
+		(void) __extra_idx;		/* don't warn if unused */    \
+	}								      \
 	if (!_TP_SESSION_CHECK(session, __chan->session))		      \
 		return;							      \
 	if (caa_unlikely(!CMM_ACCESS_ONCE(__chan->session->active)))	      \
