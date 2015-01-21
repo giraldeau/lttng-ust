@@ -5,6 +5,10 @@ dynseq_SOURCES = dynseq.c tp.h
 dynseq_LDADD = $(top_builddir)/liblttng-ust/liblttng-ust.la
 dynseq_CFLAGS = -Werror=old-style-definition
 
+.PHONY: preproc
+preproc: dynseq.c
+	$(CC) $(AM_CPPFLAGS) -I. -c -o dynseq.i.c dynseq.c -E
+
 if LTTNG_UST_BUILD_WITH_LIBDL
 dynseq_LDADD += -ldl
 endif

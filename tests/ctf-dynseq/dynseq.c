@@ -17,23 +17,24 @@
  */
 
 #include <unistd.h>
+#include <string.h>
 
 #define TRACEPOINT_DEFINE
 #define TRACEPOINT_CREATE_PROBES
 #include "tp.h"
+#include "dynseq.h"
+
 
 int main(int argc, char **argv)
 {
-	unsigned int i, num = 10;
-	int *array;
+	struct dynseq tb;
+	static char *msg = "hello";
 
 	fprintf(stderr, "Tracing... ");
-	array = malloc(sizeof(int) * 10);
-	for (i = 0; i < num; i++) {
-		array[i] = i;
-	}
-	tracepoint(dynseq, foo, num, array, i);
-	free(array);
+	tb.filename = msg;
+	tb.filename_len = strlen(msg);
+	tb.lineno = 42;
+	tracepoint(dynseq, foo, &tb, 1);
 	fprintf(stderr, " done.\n");
 	return 0;
 }

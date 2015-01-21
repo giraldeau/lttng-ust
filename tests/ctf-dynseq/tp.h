@@ -27,20 +27,22 @@
  */
 
 #include <lttng/tracepoint.h>
+#include "dynseq.h"
 
-
-TRACEPOINT_STRUCT(python, bar,
-    TP_ARGS(int, lineno),
+TRACEPOINT_STRUCT(dynseq, bar,
+    TP_ARGS(struct dynseq *, tb),
     TP_FIELDS(
-        ctf_integer(int, lineno, lineno)
+        ctf_sequence_text(char, filename, tb->filename, size_t, tb->filename_len)
+        ctf_integer(int, lineno, tb->lineno)
     )
 )
 
 TRACEPOINT_EVENT(dynseq, foo,
-	TP_ARGS(unsigned int, len, int *, array, int, x),
+	TP_ARGS(struct dynseq *, tb, size_t, num),
 	TP_FIELDS(
-		ctf_sequence(int, seq, array, unsigned int, len)
-		ctf_struct(python, bar, barfield, x)
+		ctf_sequence_of_struct(dynseq, bar, barfield, tb, size_t, num)
+		ctf_sequence_text(char, bidon, "test", size_t, strlen("test"))
+		ctf_integer(int, myint, num)
 	)
 )
 
