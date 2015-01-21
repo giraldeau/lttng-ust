@@ -272,7 +272,7 @@ static const char							\
 			},						\
 		},							\
 		.nowrite = _nowrite,					\
-	}
+	},
 /*
 #undef ctf_sequence_of_struct
 #define ctf_sequence_of_struct(_provider, _name, _item, _src, _length_type, _length)	\
