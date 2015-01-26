@@ -29,11 +29,19 @@
 #include <lttng/tracepoint.h>
 #include "dynseq.h"
 
+TRACEPOINT_STRUCT(dynseq, baz,
+    TP_ARGS(char *, str),
+    TP_FIELDS(
+        ctf_string(textfield, str)
+    )
+)
+
 TRACEPOINT_STRUCT(dynseq, bar,
     TP_ARGS(struct dynseq *, tb),
     TP_FIELDS(
         ctf_sequence_text(char, filename, tb->filename, size_t, tb->filename_len)
         ctf_integer(int, lineno, tb->lineno)
+        ctf_struct(dynseq, baz, bazfield, "bazbaz")
     )
 )
 
@@ -41,8 +49,6 @@ TRACEPOINT_EVENT(dynseq, foo,
 	TP_ARGS(struct dynseq *, tb, size_t, num),
 	TP_FIELDS(
 		ctf_sequence_of_struct(dynseq, bar, barfield, tb, size_t, num)
-		ctf_sequence_text(char, bidon, "test", size_t, strlen("test"))
-		ctf_integer(int, myint, num)
 	)
 )
 

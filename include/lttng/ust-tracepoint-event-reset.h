@@ -116,6 +116,9 @@
 #undef ctf_struct
 #define ctf_struct(_provider, _name, _item, _src...)
 
+#undef ctf_sequence_of_struct
+#define ctf_sequence_of_struct(_provider, _name, _item, _src, _length_type, _length)
+
 /* "nowrite" */
 #undef ctf_integer_nowrite
 #define ctf_integer_nowrite(_type, _item, _src)
@@ -143,3 +146,6 @@
 
 #undef ctf_struct_nowrite
 #define ctf_struct_nowrite(_provider, _name, _item, _src...)
+
+#undef ctf_sequence_of_struct_nowrite
+#define ctf_sequence_of_struct_nowrite(_provider, _name, _item, _src, _length_type, _length)

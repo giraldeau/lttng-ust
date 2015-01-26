@@ -24,7 +24,6 @@
 #include "tp.h"
 #include "dynseq.h"
 
-
 int main(int argc, char **argv)
 {
 	struct dynseq tb;
