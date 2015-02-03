@@ -16,6 +16,8 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301 USA
  */
 
+#define _GNU_SOURCE
+
 #include <unistd.h>
 #include <string.h>
 
@@ -24,16 +26,43 @@
 #include "tp.h"
 #include "dynseq.h"
 
-int main(int argc, char **argv)
+void test_array(void)
+{
+	int i, ret;
+	int num = 10;
+	struct dynseq tb[num];
+	static char *fmt = "hello %d";
+
+	for (i = 0; i < num; i++) {
+		struct dynseq *item = &tb[i];
+		ret = asprintf(&item->filename, fmt, i);
+		if (ret < 0)
+			break;
+		item->filename_len = strlen(item->filename);
+		item->lineno = i;
+	}
+	tracepoint(dynseq, foo, tb, num);
+	for (i = 0; i < num; i++) {
+		struct dynseq *item = &tb[i];
+		free(item->filename);
+	}
+}
+
+void test_stack(void)
 {
 	struct dynseq tb;
 	static char *msg = "hello";
-
-	fprintf(stderr, "Tracing... ");
 	tb.filename = msg;
 	tb.filename_len = strlen(msg);
 	tb.lineno = 42;
 	tracepoint(dynseq, foo, &tb, 1);
+}
+
+int main(int argc, char **argv)
+{
+	fprintf(stderr, "Tracing... ");
+	test_stack();
+	test_array();
 	fprintf(stderr, " done.\n");
 	return 0;
 }
