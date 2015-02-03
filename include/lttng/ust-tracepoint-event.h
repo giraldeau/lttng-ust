@@ -825,24 +825,60 @@ size_t __struct_get_align__##_provider##___##_name(_TP_ARGS_PROTO(_args))\
 #include <lttng/ust-tracepoint-event-reset.h>
 #include <lttng/ust-tracepoint-event-write.h>
 
+#undef _ctf_sequence_encoded
+#define _ctf_sequence_encoded(_type, _item, _src, _length_type,	\
+			_src_length, _encoding, _nowrite)	\
+	__num_dyn_fields += 1;
+
+#undef _ctf_string
+#define _ctf_string(_item, _src, _nowrite)				       \
+	__num_dyn_fields += 1;
+
 #undef _ctf_struct
-#define _ctf_struct(_provider, _name, _item, _nowrite, _src...)		      \
-	+ __struct_event_count___##_provider##___##_name
+#define _ctf_struct(_provider, _name, _item, _nowrite, _src...)				   \
+	__num_dyn_fields += __struct_get_num_dyn_fields__##_provider##___##_name(_src);
 
 #undef _ctf_sequence_of_struct
-#define _ctf_sequence_of_struct(_provider, _name, _item, _src, _length_type, _length, _nowrite)		      \
-	+ __struct_event_count___##_provider##___##_name * _length
+#define _ctf_sequence_of_struct(_provider, _name, _item, _src, _length_type, _length, _nowrite)	\
+	__num_dyn_fields += __struct_get_num_dyn_fields__##_provider##___##_name(_src) * _length;
 
-#undef TRACEPOINT_STRUCT
-#define TRACEPOINT_STRUCT(_provider, _name, _args, _fields)		      \
-static const size_t __struct_field_count___##_provider##___##_name =	      \
-	_TP_ARRAY_SIZE(__struct_fields___##_provider##___##_name) _fields;
+#undef TP_ARGS
+#define TP_ARGS(...) __VA_ARGS__
+
+#undef TP_FIELDS
+#define TP_FIELDS(...) __VA_ARGS__
 
 #undef TRACEPOINT_EVENT_CLASS
 #define TRACEPOINT_EVENT_CLASS(_provider, _name, _args, _fields)	      \
-static const size_t __event_field_count___##_provider##___##_name =	      \
-	_TP_ARRAY_SIZE(__event_fields___##_provider##___##_name) _fields;
+static inline lttng_ust_notrace						      \
+size_t __event_get_num_dyn_fields__##_provider##___##_name(_TP_ARGS_DATA_PROTO(_args)); \
+static inline								      \
+size_t __event_get_num_dyn_fields__##_provider##___##_name(_TP_ARGS_DATA_PROTO(_args)) \
+{									      \
+	size_t __num_dyn_fields = 0;						      \
+	if (0) {							      \
+		(void) __num_dyn_fields;					      \
+	}								      \
+	_fields								      \
+	return __num_dyn_fields;						      \
+}
 
+#undef TRACEPOINT_STRUCT
+#define TRACEPOINT_STRUCT(_provider, _name, _args, _fields)		\
+static inline								\
+size_t __struct_get_num_dyn_fields__##_provider##___##_name(_TP_ARGS_PROTO(_args)) \
+{									\
+	size_t __num_dyn_fields = 0;						\
+	(void) __num_dyn_fields;						\
+	_fields								\
+	return __num_dyn_fields;						\
+}
+
+#undef TP_ARGS
+#define TP_ARGS(...) __VA_ARGS__
+
+#undef TP_FIELDS
+#define TP_FIELDS(...) __VA_ARGS__
 
 #include TRACEPOINT_INCLUDE
 
@@ -1043,6 +1079,7 @@ void __struct_probe__##_provider##___##_name(struct lttng_channel *__chan,  \
  * 2*sizeof(unsigned long) for all supported architectures.
  * Perform UNION (||) of filter runtime list.
  */
+/*unsigned int __num_dyn_fields = __event_get_num_dyn_fields__##_provider##___##_name(_TP_ARGS_DATA_VAR(_args));	\*/
 #undef TRACEPOINT_EVENT_CLASS
 #define TRACEPOINT_EVENT_CLASS(_provider, _name, _args, _fields)	      \
 static lttng_ust_notrace						      \
@@ -1057,8 +1094,10 @@ void __event_probe__##_provider##___##_name(_TP_ARGS_DATA_PROTO(_args))	      \
 	size_t __event_len, __event_align, __extra_idx;			      \
 	size_t __dynamic_len_idx = 0;					      \
 	size_t *__dynamic_len_idx_ptr = &__dynamic_len_idx;		      \
+	unsigned int __num_dyn_fields = __event_get_num_dyn_fields__##_provider##___##_name(_TP_ARGS_DATA_VAR(_args));\
+	printf("__num_dyn_fields=%i\n", __num_dyn_fields);\
 	union {								      \
-		size_t __dynamic_len[1000];			      \
+		size_t __dynamic_len[__num_dyn_fields];			      \
 		char __filter_stack_data[2 * sizeof(unsigned long) * _TP_ARRAY_SIZE(__event_fields___##_provider##___##_name)]; \
 	} __stackvar;							      \
 	size_t *__dynamic_len = __stackvar.__dynamic_len;		      \
@@ -1068,6 +1107,7 @@ void __event_probe__##_provider##___##_name(_TP_ARGS_DATA_PROTO(_args))	      \
 		(void) __dynamic_len_idx;	/* don't warn if unused */    \
 		(void) __dynamic_len_idx_ptr;				      \
 		(void) __extra_idx;					      \
+		(void) __ctx_ptr;					      \
 	}								      \
 	if (!_TP_SESSION_CHECK(session, __chan->session))		      \
 		return;							      \
