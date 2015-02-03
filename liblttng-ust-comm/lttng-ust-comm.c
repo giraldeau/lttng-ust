@@ -842,7 +842,6 @@ int serialize_fields(size_t *_nr_write_fields,
 
 		f = &fields[nr_write_fields];
 		lf = &lttng_fields[i];
-		printf("name=%s nowrite=%d\n", lf->name, lf->nowrite);
 		/* skip 'nowrite' fields */
 		if (lf->nowrite)
 			continue;
