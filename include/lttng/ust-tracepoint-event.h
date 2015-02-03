@@ -861,33 +861,33 @@ static const size_t __event_field_count___##_provider##___##_name =	      \
 #define _ctf_integer_ext(_type, _item, _src, _byte_order, _base, _nowrite) \
 	{								\
 		_type __tmp = (_src);					\
-		lib_ring_buffer_align_ctx(&__ctx, lttng_alignof(__tmp));\
-		__chan->ops->event_write(&__ctx, &__tmp, sizeof(__tmp));\
+		lib_ring_buffer_align_ctx(__ctx_ptr, lttng_alignof(__tmp));\
+		__chan->ops->event_write(__ctx_ptr, &__tmp, sizeof(__tmp));\
 	}
 
 #undef _ctf_float
 #define _ctf_float(_type, _item, _src, _nowrite)		        \
 	{								\
 		_type __tmp = (_src);					\
-		lib_ring_buffer_align_ctx(&__ctx, lttng_alignof(__tmp));\
-		__chan->ops->event_write(&__ctx, &__tmp, sizeof(__tmp));\
+		lib_ring_buffer_align_ctx(__ctx_ptr, lttng_alignof(__tmp));\
+		__chan->ops->event_write(__ctx_ptr, &__tmp, sizeof(__tmp));\
 	}
 
 #undef _ctf_array_encoded
 #define _ctf_array_encoded(_type, _item, _src, _length, _encoding, _nowrite) \
-	lib_ring_buffer_align_ctx(&__ctx, lttng_alignof(_type));	\
-	__chan->ops->event_write(&__ctx, _src, sizeof(_type) * (_length));
+	lib_ring_buffer_align_ctx(__ctx_ptr, lttng_alignof(_type));	\
+	__chan->ops->event_write(__ctx_ptr, _src, sizeof(_type) * (_length));
 
 #undef _ctf_sequence_encoded
 #define _ctf_sequence_encoded(_type, _item, _src, _length_type,		\
 			_src_length, _encoding, _nowrite)		\
 	{								\
 		_length_type __tmpl = __dynamic_len[*__dynamic_len_idx_ptr]; \
-		lib_ring_buffer_align_ctx(&__ctx, lttng_alignof(_length_type));\
-		__chan->ops->event_write(&__ctx, &__tmpl, sizeof(_length_type));\
+		lib_ring_buffer_align_ctx(__ctx_ptr, lttng_alignof(_length_type));\
+		__chan->ops->event_write(__ctx_ptr, &__tmpl, sizeof(_length_type));\
 	}								\
-	lib_ring_buffer_align_ctx(&__ctx, lttng_alignof(_type));	\
-	__chan->ops->event_write(&__ctx, _src,				\
+	lib_ring_buffer_align_ctx(__ctx_ptr, lttng_alignof(_type));	\
+	__chan->ops->event_write(__ctx_ptr, _src,				\
 		sizeof(_type) * __get_dynamic_len(dest));
 
 /*
@@ -901,46 +901,46 @@ static const size_t __event_field_count___##_provider##___##_name =	      \
 
 #undef _ctf_string
 #define _ctf_string(_item, _src, _nowrite)			        \
-	lib_ring_buffer_align_ctx(&__ctx, lttng_alignof(*(_src)));	\
+	lib_ring_buffer_align_ctx(__ctx_ptr, lttng_alignof(*(_src)));	\
 	if (__chan->ops->u.has_strcpy)					\
-		__chan->ops->event_strcpy(&__ctx, _src,			\
+		__chan->ops->event_strcpy(__ctx_ptr, _src,			\
 			__get_dynamic_len(dest));			\
 	else								\
-		__chan->ops->event_write(&__ctx, _src,			\
+		__chan->ops->event_write(__ctx_ptr, _src,			\
 			__get_dynamic_len(dest));
 
 #undef _ctf_enum
 #define _ctf_enum(_provider, _name, _item, _src, _nowrite)		\
 {									\
-	lib_ring_buffer_align_ctx(&__ctx,				\
+	lib_ring_buffer_align_ctx(__ctx_ptr,				\
 		__enum_get_align__##_provider##___##_name());		\
 	if (__enum_##_provider##_##_name.container_type.signedness) {	\
 		switch (__enum_##_provider##_##_name.container_type.size) { \
 		case 8:							\
 		{							\
 			int8_t __tmp = (int8_t) _src;			\
-			__chan->ops->event_write(&__ctx, &__tmp,	\
+			__chan->ops->event_write(__ctx_ptr, &__tmp,	\
 					sizeof(__tmp));			\
 			break;						\
 		}							\
 		case 16:						\
 		{							\
 			int16_t __tmp = (int16_t) _src;			\
-			__chan->ops->event_write(&__ctx, &__tmp,	\
+			__chan->ops->event_write(__ctx_ptr, &__tmp,	\
 					sizeof(__tmp));			\
 			break;						\
 		}							\
 		case 32:						\
 		{							\
 			int32_t __tmp = (int32_t) _src;			\
-			__chan->ops->event_write(&__ctx, &__tmp,	\
+			__chan->ops->event_write(__ctx_ptr, &__tmp,	\
 					sizeof(__tmp));			\
 			break;						\
 		}							\
 		case 64:						\
 		{							\
 			int64_t __tmp = (int64_t) _src;			\
-			__chan->ops->event_write(&__ctx, &__tmp,	\
+			__chan->ops->event_write(__ctx_ptr, &__tmp,	\
 					sizeof(__tmp));			\
 			break;						\
 		}							\
@@ -952,28 +952,28 @@ static const size_t __event_field_count___##_provider##___##_name =	      \
 		case 8:							\
 		{							\
 			uint8_t __tmp = (uint8_t) _src;			\
-			__chan->ops->event_write(&__ctx, &__tmp,	\
+			__chan->ops->event_write(__ctx_ptr, &__tmp,	\
 					sizeof(__tmp));			\
 			break;						\
 		}							\
 		case 16:						\
 		{							\
 			uint16_t __tmp = (uint16_t) _src;		\
-			__chan->ops->event_write(&__ctx, &__tmp,	\
+			__chan->ops->event_write(__ctx_ptr, &__tmp,	\
 					sizeof(__tmp));			\
 			break;						\
 		}							\
 		case 32:						\
 		{							\
 			uint32_t __tmp = (uint32_t) _src;		\
-			__chan->ops->event_write(&__ctx, &__tmp,	\
+			__chan->ops->event_write(__ctx_ptr, &__tmp,	\
 					sizeof(__tmp));			\
 			break;						\
 		}							\
 		case 64:						\
 		{							\
 			uint64_t __tmp = (uint64_t) _src;		\
-			__chan->ops->event_write(&__ctx, &__tmp,	\
+			__chan->ops->event_write(__ctx_ptr, &__tmp,	\
 					sizeof(__tmp));			\
 			break;						\
 		}							\
@@ -985,14 +985,14 @@ static const size_t __event_field_count___##_provider##___##_name =	      \
 
 #undef _ctf_struct
 #define _ctf_struct(_provider, _name, _item, _nowrite, _src...)		\
-	__struct_probe__##_provider##___##_name(__chan, __ctx, __dynamic_len_idx_ptr, __dynamic_len, _src);
+	__struct_probe__##_provider##___##_name(__chan, __ctx_ptr, __dynamic_len_idx_ptr, __dynamic_len, _src);
 
 #undef _ctf_sequence_of_struct
 #define _ctf_sequence_of_struct(_provider, _name, _item, _src, _length_type, _length, _nowrite)	\
-	lib_ring_buffer_align_ctx(&__ctx, lttng_alignof(_length_type));\
-	__chan->ops->event_write(&__ctx, &_length, sizeof(_length_type));\
+	lib_ring_buffer_align_ctx(__ctx_ptr, lttng_alignof(_length_type));\
+	__chan->ops->event_write(__ctx_ptr, &_length, sizeof(_length_type));\
 	for (__extra_idx = 0; __extra_idx < _length; __extra_idx++) {	\
-		__struct_probe__##_provider##___##_name(__chan, __ctx, __dynamic_len_idx_ptr, __dynamic_len, &_src[__extra_idx]);	\
+		__struct_probe__##_provider##___##_name(__chan, __ctx_ptr, __dynamic_len_idx_ptr, __dynamic_len, &_src[__extra_idx]);	\
 	}
 
 
@@ -1013,7 +1013,7 @@ static const size_t __event_field_count___##_provider##___##_name =	      \
 #define TRACEPOINT_STRUCT(_provider, _name, _args, _fields)		      \
 static inline								      \
 void __struct_probe__##_provider##___##_name(struct lttng_channel *__chan,  \
-	struct lttng_ust_lib_ring_buffer_ctx __ctx, size_t *__dynamic_len_idx_ptr, \
+	struct lttng_ust_lib_ring_buffer_ctx *__ctx_ptr, size_t *__dynamic_len_idx_ptr, \
 	size_t *__dynamic_len, _TP_ARGS_PROTO(_args))			      \
 {									      \
 	size_t __extra_idx;						      \
@@ -1053,20 +1053,21 @@ void __event_probe__##_provider##___##_name(_TP_ARGS_DATA_PROTO(_args))	      \
 	struct lttng_event *__event = (struct lttng_event *) __tp_data;			      \
 	struct lttng_channel *__chan = __event->chan;			      \
 	struct lttng_ust_lib_ring_buffer_ctx __ctx;			      \
+	struct lttng_ust_lib_ring_buffer_ctx *__ctx_ptr = &__ctx;	      \
 	size_t __event_len, __event_align, __extra_idx;			      \
-	size_t __dynamic_len_idx_tmp = 0;					      \
-	size_t *__dynamic_len_idx_ptr = &__dynamic_len_idx_tmp;		      \
+	size_t __dynamic_len_idx = 0;					      \
+	size_t *__dynamic_len_idx_ptr = &__dynamic_len_idx;		      \
 	union {								      \
-		size_t __dynamic_len[__event_field_count___##_provider##___##_name];			      \
+		size_t __dynamic_len[1000];			      \
 		char __filter_stack_data[2 * sizeof(unsigned long) * _TP_ARRAY_SIZE(__event_fields___##_provider##___##_name)]; \
 	} __stackvar;							      \
 	size_t *__dynamic_len = __stackvar.__dynamic_len;		      \
 	int __ret;							      \
 									      \
 	if (0)	{							      \
-		(void) __dynamic_len_idx_tmp;	/* don't warn if unused */    \
-		(void) __dynamic_len_idx_ptr;	/* don't warn if unused */    \
-		(void) __extra_idx;		/* don't warn if unused */    \
+		(void) __dynamic_len_idx;	/* don't warn if unused */    \
+		(void) __dynamic_len_idx_ptr;				      \
+		(void) __extra_idx;					      \
 	}								      \
 	if (!_TP_SESSION_CHECK(session, __chan->session))		      \
 		return;							      \
@@ -1101,7 +1102,7 @@ void __event_probe__##_provider##___##_name(_TP_ARGS_DATA_PROTO(_args))	      \
 	__ret = __chan->ops->event_reserve(&__ctx, __event->id);	      \
 	if (__ret < 0)							      \
 		return;							      \
-	__dynamic_len_idx_tmp = 0;					      \
+	__dynamic_len_idx = 0;						      \
 	_fields								      \
 	__chan->ops->event_commit(&__ctx);				      \
 }
