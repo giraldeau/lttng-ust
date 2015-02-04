@@ -1068,6 +1068,7 @@ void __event_probe__##_provider##___##_name(_TP_ARGS_DATA_PROTO(_args))	      \
 		(void) __dynamic_len_idx;	/* don't warn if unused */    \
 		(void) __dynamic_len_idx_ptr;				      \
 		(void) __extra_idx;					      \
+		(void) __ctx_ptr;					      \
 	}								      \
 	if (!_TP_SESSION_CHECK(session, __chan->session))		      \
 		return;							      \
