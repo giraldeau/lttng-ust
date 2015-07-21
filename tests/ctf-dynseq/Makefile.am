@@ -9,8 +9,7 @@ dynseq_dbg_SOURCES = dynseq.c.i.c
 dynseq_dbg_LDADD = $(top_builddir)/liblttng-ust/liblttng-ust.la
 dynseq_dbg_CFLAGS = -Werror=old-style-definition
 
-.PHONY: preproc
-preproc: dynseq.c
+dynseq.c.i.c: dynseq.c
 	$(CC) $(AM_CPPFLAGS) -I. -c -o $<.i.tmp $< -E
 	cat $<.i.tmp | grep -v "# " > $<.i.c
 
