@@ -6,6 +6,7 @@ SUBDIRS = . include snprintf libringbuffer liblttng-ust-comm \
 		liblttng-ust-fork \
 		liblttng-ust-libc-wrapper \
 		liblttng-ust-cyg-profile \
+		liblttng-ust-sampling \
 		tools
 
 if HAVE_DLINFO

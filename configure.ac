@@ -464,6 +464,7 @@ AC_CONFIG_FILES([
 	liblttng-ust-java-agent/jni/log4j/Makefile
 	liblttng-ust-libc-wrapper/Makefile
 	liblttng-ust-cyg-profile/Makefile
+	liblttng-ust-sampling/Makefile
 	liblttng-ust-python-agent/Makefile
 	python-lttngust/Makefile
 	python-lttngust/setup.py
